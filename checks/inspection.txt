@@ -1,0 +1,40 @@
+action                                           shape=(74, 8)            dtype=float32
+camera_name                                      shape=()                 dtype=<U11
+control_freq                                     shape=()                 dtype=int64
+control_mode                                     shape=()                 dtype=<U12
+cube_pose                                        shape=(75, 7)            dtype=float32
+ee_pose                                          shape=(75, 7)            dtype=float32
+env_id                                           shape=()                 dtype=<U11
+env_kwargs_json                                  shape=()                 dtype=<U339
+goal_pos                                         shape=(75, 3)            dtype=float32
+initial_controller_json                          shape=()                 dtype=<U2
+initial_state/actors/cube                        shape=(1, 13)            dtype=float32
+initial_state/actors/goal_site                   shape=(1, 13)            dtype=float32
+initial_state/actors/table-workspace             shape=(1, 13)            dtype=float32
+initial_state/articulations/panda                shape=(1, 31)            dtype=float32
+joint_names                                      shape=(9,)               dtype=<U19
+qpos                                             shape=(75, 9)            dtype=float32
+qvel                                             shape=(75, 9)            dtype=float32
+render_backend                                   shape=()                 dtype=<U10
+reset_kwargs_json                                shape=()                 dtype=<U26
+reset_state/actors/cube                          shape=(13,)              dtype=float32
+reset_state/actors/goal_site                     shape=(13,)              dtype=float32
+reset_state/actors/table-workspace               shape=(13,)              dtype=float32
+reset_state/articulations/panda                  shape=(31,)              dtype=float32
+reward                                           shape=(74,)              dtype=float32
+rgb                                              shape=(75, 128, 128, 3)  dtype=uint8
+schema_version                                   shape=()                 dtype=int64
+seed                                             shape=()                 dtype=int64
+sim_backend                                      shape=()                 dtype=<U9
+sim_freq                                         shape=()                 dtype=int64
+source_episode_id                                shape=()                 dtype=int64
+source_episode_json                              shape=()                 dtype=<U150
+source_sha256                                    shape=()                 dtype=<U64
+success                                          shape=(74,)              dtype=bool
+terminated                                       shape=(74,)              dtype=bool
+truncated                                        shape=(74,)              dtype=bool
+versions_json                                    shape=()                 dtype=<U101
+Transitions: 74; final success: True
+Cube z: initial=0.02000 m, peak=0.28620 m, final=0.28620 m; peak lift=0.26620 m
+Lift exceeds 1 cm: True
+Saved checks/cube_z_episode_000.png
