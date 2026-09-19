@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "model_sha256": "4407877839d8e0a244294b12fba2ef1903778485308260868b27d9bb20092631",
+  "manifest_sha256": "36dd7be97982f433717f47bca87aa5566c931303e6db919247bdd0e415a61a86",
+  "calibration_episodes": 15,
+  "error_order": [
+    "tcp_position_m",
+    "tcp_rotation_rad",
+    "cube_position_m",
+    "cube_rotation_rad"
+  ],
+  "rule": "strict score > maximum clean calibration episode score; empirical, not a 95% guarantee",
+  "methods": {
+    "learned": {
+      "scales": [
+        0.0010000000474974513,
+        0.009999999776482582,
+        0.0010000000474974513,
+        0.009999999776482582
+      ],
+      "threshold": 1.8449244499206543,
+      "calibration_episode_maxima": [
+        {
+          "file": "episode_044.npz",
+          "max_score": 1.0646488666534424
+        },
+        {
+          "file": "episode_082.npz",
+          "max_score": 1.7958046197891235
+        },
+        {
+          "file": "episode_067.npz",
+          "max_score": 1.3620667457580566
+        },
+        {
+          "file": "episode_034.npz",
+          "max_score": 1.0685852766036987
+        },
+        {
+          "file": "episode_030.npz",
+          "max_score": 1.2352464199066162
+        },
+        {
+          "file": "episode_058.npz",
+          "max_score": 1.0918688774108887
+        },
+        {
+          "file": "episode_074.npz",
+          "max_score": 1.1181950569152832
+        },
+        {
+          "file": "episode_088.npz",
+          "max_score": 1.2897511720657349
+        },
+        {
+          "file": "episode_098.npz",
+          "max_score": 1.1571681499481201
+        },
+        {
+          "file": "episode_054.npz",
+          "max_score": 1.8449244499206543
+        },
+        {
+          "file": "episode_049.npz",
+          "max_score": 1.0453381538391113
+        },
+        {
+          "file": "episode_006.npz",
+          "max_score": 0.9879350662231445
+        },
+        {
+          "file": "episode_090.npz",
+          "max_score": 0.9769901633262634
+        },
+        {
+          "file": "episode_011.npz",
+          "max_score": 0.7985444664955139
+        },
+        {
+          "file": "episode_085.npz",
+          "max_score": 0.7167444229125977
+        }
+      ]
+    },
+    "persistence": {
+      "scales": [
+        0.012451733462512493,
+        0.030593380331993103,
+        0.01245280634611845,
+        0.009999999776482582
+      ],
+      "threshold": 1.3710838556289673,
+      "calibration_episode_maxima": [
+        {
+          "file": "episode_044.npz",
+          "max_score": 1.3049073219299316
+        },
+        {
+          "file": "episode_082.npz",
+          "max_score": 1.2160569429397583
+        },
+        {
+          "file": "episode_067.npz",
+          "max_score": 0.8662444353103638
+        },
+        {
+          "file": "episode_034.npz",
+          "max_score": 1.0299943685531616
+        },
+        {
+          "file": "episode_030.npz",
+          "max_score": 1.113229513168335
+        },
+        {
+          "file": "episode_058.npz",
+          "max_score": 1.311394214630127
+        },
+        {
+          "file": "episode_074.npz",
+          "max_score": 1.2876642942428589
+        },
+        {
+          "file": "episode_088.npz",
+          "max_score": 1.0156753063201904
+        },
+        {
+          "file": "episode_098.npz",
+          "max_score": 1.298620581626892
+        },
+        {
+          "file": "episode_054.npz",
+          "max_score": 1.3147833347320557
+        },
+        {
+          "file": "episode_049.npz",
+          "max_score": 1.3710838556289673
+        },
+        {
+          "file": "episode_006.npz",
+          "max_score": 1.1416922807693481
+        },
+        {
+          "file": "episode_090.npz",
+          "max_score": 1.2253460884094238
+        },
+        {
+          "file": "episode_011.npz",
+          "max_score": 1.047728419303894
+        },
+        {
+          "file": "episode_085.npz",
+          "max_score": 0.9220725297927856
+        }
+      ]
+    },
+    "constant_velocity": {
+      "scales": [
+        0.0012434633681550622,
+        0.009999999776482582,
+        0.0011443330440670252,
+        0.009999999776482582
+      ],
+      "threshold": 2.090219259262085,
+      "calibration_episode_maxima": [
+        {
+          "file": "episode_044.npz",
+          "max_score": 2.0590198040008545
+        },
+        {
+          "file": "episode_082.npz",
+          "max_score": 1.888113260269165
+        },
+        {
+          "file": "episode_067.npz",
+          "max_score": 1.337469220161438
+        },
+        {
+          "file": "episode_034.npz",
+          "max_score": 1.116668701171875
+        },
+        {
+          "file": "episode_030.npz",
+          "max_score": 1.2520086765289307
+        },
+        {
+          "file": "episode_058.npz",
+          "max_score": 1.2373818159103394
+        },
+        {
+          "file": "episode_074.npz",
+          "max_score": 1.9184030294418335
+        },
+        {
+          "file": "episode_088.npz",
+          "max_score": 1.1178666353225708
+        },
+        {
+          "file": "episode_098.npz",
+          "max_score": 1.2603458166122437
+        },
+        {
+          "file": "episode_054.npz",
+          "max_score": 2.090219259262085
+        },
+        {
+          "file": "episode_049.npz",
+          "max_score": 1.3563810586929321
+        },
+        {
+          "file": "episode_006.npz",
+          "max_score": 1.3543225526809692
+        },
+        {
+          "file": "episode_090.npz",
+          "max_score": 1.4146883487701416
+        },
+        {
+          "file": "episode_011.npz",
+          "max_score": 1.2405381202697754
+        },
+        {
+          "file": "episode_085.npz",
+          "max_score": 1.3481355905532837
+        }
+      ]
+    }
+  }
+}

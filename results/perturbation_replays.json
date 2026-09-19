@@ -1,0 +1,693 @@
+{
+  "manifest_sha256": "36dd7be97982f433717f47bca87aa5566c931303e6db919247bdd0e415a61a86",
+  "cases": [
+    {
+      "file": "data/perturbed/episode_041__clean.npz",
+      "sha256": "5621bc11c3863a9b2d5fa144f9416fa1fc40087489f4f2f15708956284f806f0",
+      "source_file": "data/pickcube100/episode_041.npz",
+      "source_episode_id": 41,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 80,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_041__cube_shift.npz",
+      "sha256": "a4ae32e42cd5df5718212e901eb4704338725c499e6b0b4cdb95c24d52ebd338",
+      "source_file": "data/pickcube100/episode_041.npz",
+      "source_episode_id": 41,
+      "condition": "cube_shift",
+      "injection_step": 28,
+      "length": 80,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_041__gripper_open.npz",
+      "sha256": "e2a1bb94f72cbf2fe24e26d4e1d39252c7f0f33ec52f5318ecfa0b3e4dba1d8f",
+      "source_file": "data/pickcube100/episode_041.npz",
+      "source_episode_id": 41,
+      "condition": "gripper_open",
+      "injection_step": 44,
+      "length": 80,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_041__arm_hold.npz",
+      "sha256": "34aedd9643d9708b534796389359686b6a63a17f6ebd9f48aabc5c8fa865302a",
+      "source_file": "data/pickcube100/episode_041.npz",
+      "source_episode_id": 41,
+      "condition": "arm_hold",
+      "injection_step": 44,
+      "length": 80,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_022__clean.npz",
+      "sha256": "0ae363bacca33a49ba43f753425d3205610739ddbda7aff000c24e8c4ad99056",
+      "source_file": "data/pickcube100/episode_022.npz",
+      "source_episode_id": 22,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 68,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_022__cube_shift.npz",
+      "sha256": "156f07840a237844c2ca8aacda30213a7ff36785168172ae84d4c95337749eb7",
+      "source_file": "data/pickcube100/episode_022.npz",
+      "source_episode_id": 22,
+      "condition": "cube_shift",
+      "injection_step": 23,
+      "length": 68,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_022__gripper_open.npz",
+      "sha256": "c7589105cfd1fba050ca596ee867dbff4f7f15b5eaf361fb3c3647a1d574bdb5",
+      "source_file": "data/pickcube100/episode_022.npz",
+      "source_episode_id": 22,
+      "condition": "gripper_open",
+      "injection_step": 37,
+      "length": 68,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_022__arm_hold.npz",
+      "sha256": "9de394e08f90a27107a0fee6be4fa4550cf272eb5b12af6c1c0fa1af301d6636",
+      "source_file": "data/pickcube100/episode_022.npz",
+      "source_episode_id": 22,
+      "condition": "arm_hold",
+      "injection_step": 37,
+      "length": 68,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_019__clean.npz",
+      "sha256": "59dc8ff98ef846557372df273e79e6fb9971966fdb23cba2bf2ad46cd1d11d0a",
+      "source_file": "data/pickcube100/episode_019.npz",
+      "source_episode_id": 19,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 87,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_019__cube_shift.npz",
+      "sha256": "28ecc9ee7c5cf1a2386818635e2e5fed007cd952a04006e22cc592c12b4ed8e5",
+      "source_file": "data/pickcube100/episode_019.npz",
+      "source_episode_id": 19,
+      "condition": "cube_shift",
+      "injection_step": 30,
+      "length": 87,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_019__gripper_open.npz",
+      "sha256": "8a4bdfa2fa3fabcc1cd75f6abd78d43c6a18ea41234037fab729e6467735bd8b",
+      "source_file": "data/pickcube100/episode_019.npz",
+      "source_episode_id": 19,
+      "condition": "gripper_open",
+      "injection_step": 47,
+      "length": 87,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_019__arm_hold.npz",
+      "sha256": "96d02667365d6926c507aec3ef5af7553355dd04839561d239ab01ecfad042e1",
+      "source_file": "data/pickcube100/episode_019.npz",
+      "source_episode_id": 19,
+      "condition": "arm_hold",
+      "injection_step": 47,
+      "length": 87,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_035__clean.npz",
+      "sha256": "296d9f7e6c78a6eae9fda4d8276735c7c0eaefe04c69bb09c3a2057403a8c125",
+      "source_file": "data/pickcube100/episode_035.npz",
+      "source_episode_id": 35,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 66,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_035__cube_shift.npz",
+      "sha256": "57fc84a016be64a89396d1221298b8428dd9c42134bedacb2e7b35ca3ab98be1",
+      "source_file": "data/pickcube100/episode_035.npz",
+      "source_episode_id": 35,
+      "condition": "cube_shift",
+      "injection_step": 23,
+      "length": 66,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_035__gripper_open.npz",
+      "sha256": "bce640f76051cff7e922b4de4bc6ee421644160d97910fcbc4436fb36ea68c73",
+      "source_file": "data/pickcube100/episode_035.npz",
+      "source_episode_id": 35,
+      "condition": "gripper_open",
+      "injection_step": 36,
+      "length": 66,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_035__arm_hold.npz",
+      "sha256": "a6846c85f3619d87bd613640ba9f51149514a11fb95c1ca5dac3c7aa4fa41c5b",
+      "source_file": "data/pickcube100/episode_035.npz",
+      "source_episode_id": 35,
+      "condition": "arm_hold",
+      "injection_step": 36,
+      "length": 66,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_064__clean.npz",
+      "sha256": "89addee9c3e0ce549aa5b3c7202a78d5654a064b9d5387a5e00c9cda80fa07f7",
+      "source_file": "data/pickcube100/episode_064.npz",
+      "source_episode_id": 64,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 88,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_064__cube_shift.npz",
+      "sha256": "a4a3375d6b239147aeef8716622723f2caa6d52388f4789e5a8a4a569d0016d0",
+      "source_file": "data/pickcube100/episode_064.npz",
+      "source_episode_id": 64,
+      "condition": "cube_shift",
+      "injection_step": 30,
+      "length": 88,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_064__gripper_open.npz",
+      "sha256": "293e3e1bcc962753ae60617de6fa6de7050652dedad86062b00b143ceac7cd3c",
+      "source_file": "data/pickcube100/episode_064.npz",
+      "source_episode_id": 64,
+      "condition": "gripper_open",
+      "injection_step": 48,
+      "length": 88,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_064__arm_hold.npz",
+      "sha256": "3c90e4be4a72f1df951e1694d2918ea6211e32f18ab86a2a7e17aa70e391aa16",
+      "source_file": "data/pickcube100/episode_064.npz",
+      "source_episode_id": 64,
+      "condition": "arm_hold",
+      "injection_step": 48,
+      "length": 88,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_047__clean.npz",
+      "sha256": "bc394efbfd4ab04ef08637b7562870f25b8016318cfc191208908d2b167ab6e4",
+      "source_file": "data/pickcube100/episode_047.npz",
+      "source_episode_id": 47,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 83,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_047__cube_shift.npz",
+      "sha256": "642a27bff3551e393d7869ede838c945150b5a29b497f652ec63f8012a754d54",
+      "source_file": "data/pickcube100/episode_047.npz",
+      "source_episode_id": 47,
+      "condition": "cube_shift",
+      "injection_step": 29,
+      "length": 83,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_047__gripper_open.npz",
+      "sha256": "c89d34d96592b7e068bb3ac01451d8190b11f13fdd0068655425e77154b43949",
+      "source_file": "data/pickcube100/episode_047.npz",
+      "source_episode_id": 47,
+      "condition": "gripper_open",
+      "injection_step": 45,
+      "length": 83,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_047__arm_hold.npz",
+      "sha256": "f9bd1c5ca76504d6b3fbca12409ff341e8b558006e2f3fa0d3d607aeb8525735",
+      "source_file": "data/pickcube100/episode_047.npz",
+      "source_episode_id": 47,
+      "condition": "arm_hold",
+      "injection_step": 45,
+      "length": 83,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_012__clean.npz",
+      "sha256": "ba7dd735b7332f52489e7d5e62fd294586bc6efb45be8d9746e4ee3b6589c3c4",
+      "source_file": "data/pickcube100/episode_012.npz",
+      "source_episode_id": 12,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 71,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_012__cube_shift.npz",
+      "sha256": "e24ff5155c6be2a77d983215c78f0f5a21a6b8e06694356470e2db8a23e4d0c5",
+      "source_file": "data/pickcube100/episode_012.npz",
+      "source_episode_id": 12,
+      "condition": "cube_shift",
+      "injection_step": 24,
+      "length": 71,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_012__gripper_open.npz",
+      "sha256": "033554a078bef205470afff84ba4a2a84f57d51646b4c52c4682bad63bbf7bc8",
+      "source_file": "data/pickcube100/episode_012.npz",
+      "source_episode_id": 12,
+      "condition": "gripper_open",
+      "injection_step": 39,
+      "length": 71,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_012__arm_hold.npz",
+      "sha256": "000f25e7f71e3c09264af0aeb19df1321b13dd35b76d618ba4e001789442a868",
+      "source_file": "data/pickcube100/episode_012.npz",
+      "source_episode_id": 12,
+      "condition": "arm_hold",
+      "injection_step": 39,
+      "length": 71,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_053__clean.npz",
+      "sha256": "7ff5fbaf9fdf534419d1bf42a03d2ff68a02ff7bff49a42980d86d5c70bc07be",
+      "source_file": "data/pickcube100/episode_053.npz",
+      "source_episode_id": 53,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 71,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_053__cube_shift.npz",
+      "sha256": "a4c5855640aa5f3702254378fee78eccf72ef7fcd4916ea37a99a4a82eca09bb",
+      "source_file": "data/pickcube100/episode_053.npz",
+      "source_episode_id": 53,
+      "condition": "cube_shift",
+      "injection_step": 24,
+      "length": 71,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_053__gripper_open.npz",
+      "sha256": "6c1cdea33af9508e9f3b1f822e32116df1da102a6d8aa42712d4ac0f7bfa2dc3",
+      "source_file": "data/pickcube100/episode_053.npz",
+      "source_episode_id": 53,
+      "condition": "gripper_open",
+      "injection_step": 39,
+      "length": 71,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_053__arm_hold.npz",
+      "sha256": "4527d912b885496003fb38a196742e79b043865e24a92fde97e17851495ed652",
+      "source_file": "data/pickcube100/episode_053.npz",
+      "source_episode_id": 53,
+      "condition": "arm_hold",
+      "injection_step": 39,
+      "length": 71,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_014__clean.npz",
+      "sha256": "9b46e35bf866f16f6b67482a200ac4f71469d674005e9d070a923448b320fdd8",
+      "source_file": "data/pickcube100/episode_014.npz",
+      "source_episode_id": 14,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 76,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_014__cube_shift.npz",
+      "sha256": "42caf1510bd1555e89ba4f601fb84b1dea42159f45a736eeb8b277a3849769ca",
+      "source_file": "data/pickcube100/episode_014.npz",
+      "source_episode_id": 14,
+      "condition": "cube_shift",
+      "injection_step": 26,
+      "length": 76,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_014__gripper_open.npz",
+      "sha256": "e898446c1c36eafd5eb29d14715df0441d7141b9e0d9b67767f6a40d5684bbab",
+      "source_file": "data/pickcube100/episode_014.npz",
+      "source_episode_id": 14,
+      "condition": "gripper_open",
+      "injection_step": 41,
+      "length": 76,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_014__arm_hold.npz",
+      "sha256": "2f7933e16a003acab4d8009ff9f864c06aa3c0b503f865a4cd423206c45de106",
+      "source_file": "data/pickcube100/episode_014.npz",
+      "source_episode_id": 14,
+      "condition": "arm_hold",
+      "injection_step": 41,
+      "length": 76,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_013__clean.npz",
+      "sha256": "3ff9aec3553ff6f5fb1094d3f852334ed1c4ff5a5f1ca969e83173aa9db0144d",
+      "source_file": "data/pickcube100/episode_013.npz",
+      "source_episode_id": 13,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 80,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_013__cube_shift.npz",
+      "sha256": "06e56ef9678e4251b8b67202e2df5eab79c52370ddbb07b8d4da4ab113ac56ac",
+      "source_file": "data/pickcube100/episode_013.npz",
+      "source_episode_id": 13,
+      "condition": "cube_shift",
+      "injection_step": 28,
+      "length": 80,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_013__gripper_open.npz",
+      "sha256": "aeaeea640394828a782fc4574f1fbcee20a113ab205bafbb1ecccc025557d79e",
+      "source_file": "data/pickcube100/episode_013.npz",
+      "source_episode_id": 13,
+      "condition": "gripper_open",
+      "injection_step": 44,
+      "length": 80,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_013__arm_hold.npz",
+      "sha256": "ae9c1d116c198c540da90edc864466dc60431c9bbc083d554a0b2250fb148b08",
+      "source_file": "data/pickcube100/episode_013.npz",
+      "source_episode_id": 13,
+      "condition": "arm_hold",
+      "injection_step": 44,
+      "length": 80,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_066__clean.npz",
+      "sha256": "58a756d4c69a3f2580c2d53f96e11414b71354c1b35833043b3f94426ce09e37",
+      "source_file": "data/pickcube100/episode_066.npz",
+      "source_episode_id": 66,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 92,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_066__cube_shift.npz",
+      "sha256": "7d8aa332914bf5e71310b2cb161e84e180934786688ba80142e45a56b7f4920d",
+      "source_file": "data/pickcube100/episode_066.npz",
+      "source_episode_id": 66,
+      "condition": "cube_shift",
+      "injection_step": 32,
+      "length": 92,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_066__gripper_open.npz",
+      "sha256": "fdbed357518215464b314d8b0c3c89b598fbb966c34a902e5b087aba4deeafed",
+      "source_file": "data/pickcube100/episode_066.npz",
+      "source_episode_id": 66,
+      "condition": "gripper_open",
+      "injection_step": 50,
+      "length": 92,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_066__arm_hold.npz",
+      "sha256": "9d51cbc6095acb6a6cac616104d2729754106a213cac87cb554b5572a30bba8a",
+      "source_file": "data/pickcube100/episode_066.npz",
+      "source_episode_id": 66,
+      "condition": "arm_hold",
+      "injection_step": 50,
+      "length": 92,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_036__clean.npz",
+      "sha256": "9aaf2599a5d004572955fd402a18c55657102fab5604c78f2373f69008eb1d13",
+      "source_file": "data/pickcube100/episode_036.npz",
+      "source_episode_id": 36,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 80,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_036__cube_shift.npz",
+      "sha256": "0669465753ed2c248c729fe231ee24817fe38245227d4e3deaf646e61d28bc87",
+      "source_file": "data/pickcube100/episode_036.npz",
+      "source_episode_id": 36,
+      "condition": "cube_shift",
+      "injection_step": 28,
+      "length": 80,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_036__gripper_open.npz",
+      "sha256": "09e70c4077e35ca4401e6b2f4db6c94c69a0591229389be9b9a8fef44497cc92",
+      "source_file": "data/pickcube100/episode_036.npz",
+      "source_episode_id": 36,
+      "condition": "gripper_open",
+      "injection_step": 44,
+      "length": 80,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_036__arm_hold.npz",
+      "sha256": "cbce54181a7b3de341a3348c46d61a029261c6c1decdbabb5b04ca242df406f5",
+      "source_file": "data/pickcube100/episode_036.npz",
+      "source_episode_id": 36,
+      "condition": "arm_hold",
+      "injection_step": 44,
+      "length": 80,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_065__clean.npz",
+      "sha256": "fc80cb63eb0c05c28927cf12f58cba2fa20ed79d9cf3572efdffdfc3f2df8bed",
+      "source_file": "data/pickcube100/episode_065.npz",
+      "source_episode_id": 65,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 84,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_065__cube_shift.npz",
+      "sha256": "ea4f6af128a7c630c5efdb8ab0bb649e9e52c2a385d4a921dee847ca09f1f2d2",
+      "source_file": "data/pickcube100/episode_065.npz",
+      "source_episode_id": 65,
+      "condition": "cube_shift",
+      "injection_step": 29,
+      "length": 84,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_065__gripper_open.npz",
+      "sha256": "1570971a4358a8968937cedfc5dea139b5f3256219570e56faa52481fd4d8f96",
+      "source_file": "data/pickcube100/episode_065.npz",
+      "source_episode_id": 65,
+      "condition": "gripper_open",
+      "injection_step": 46,
+      "length": 84,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_065__arm_hold.npz",
+      "sha256": "c3b3e78bcbb9263f8de1524304649371930be17d0b84aa7622772634023fbfe2",
+      "source_file": "data/pickcube100/episode_065.npz",
+      "source_episode_id": 65,
+      "condition": "arm_hold",
+      "injection_step": 46,
+      "length": 84,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_077__clean.npz",
+      "sha256": "039e1841130c5fe19cf284ad75ba7487cb895b6eb1d9de637150bebf5c888ae4",
+      "source_file": "data/pickcube100/episode_077.npz",
+      "source_episode_id": 77,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 68,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_077__cube_shift.npz",
+      "sha256": "64487e70dba2ecaf06d57ac3da95251909db4c94ca0a1431482da38790518eff",
+      "source_file": "data/pickcube100/episode_077.npz",
+      "source_episode_id": 77,
+      "condition": "cube_shift",
+      "injection_step": 23,
+      "length": 68,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_077__gripper_open.npz",
+      "sha256": "18c73fbfe66897b51a7ec70387af982b2217d09eb55977bed7952e6fafea8d9b",
+      "source_file": "data/pickcube100/episode_077.npz",
+      "source_episode_id": 77,
+      "condition": "gripper_open",
+      "injection_step": 37,
+      "length": 68,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_077__arm_hold.npz",
+      "sha256": "31b14c8f42ef6ade13e33c79c568d34a4f6492295a1298ad6f4462e2b773602e",
+      "source_file": "data/pickcube100/episode_077.npz",
+      "source_episode_id": 77,
+      "condition": "arm_hold",
+      "injection_step": 37,
+      "length": 68,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_008__clean.npz",
+      "sha256": "e339c0d04a2a887e954df8d632581726cee09e256b3d277b43406e475bde3ca8",
+      "source_file": "data/pickcube100/episode_008.npz",
+      "source_episode_id": 8,
+      "condition": "clean",
+      "injection_step": -1,
+      "length": 49,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_008__cube_shift.npz",
+      "sha256": "f8381bddd37d24f4363cc9b77f3105644da1baebe80e8aec505cbb95a83cd611",
+      "source_file": "data/pickcube100/episode_008.npz",
+      "source_episode_id": 8,
+      "condition": "cube_shift",
+      "injection_step": 17,
+      "length": 49,
+      "final_success": false,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_008__gripper_open.npz",
+      "sha256": "29079afc094a19b334fd8694b8bcec128debb05034c0b4807d2000fd41c35a7f",
+      "source_file": "data/pickcube100/episode_008.npz",
+      "source_episode_id": 8,
+      "condition": "gripper_open",
+      "injection_step": 26,
+      "length": 49,
+      "final_success": true,
+      "clean_prefix_equal": true
+    },
+    {
+      "file": "data/perturbed/episode_008__arm_hold.npz",
+      "sha256": "246557c746eee4ee19c77cb0331f7d03cf5f65568b2a734881271c25d5b46731",
+      "source_file": "data/pickcube100/episode_008.npz",
+      "source_episode_id": 8,
+      "condition": "arm_hold",
+      "injection_step": 26,
+      "length": 49,
+      "final_success": true,
+      "clean_prefix_equal": true
+    }
+  ],
+  "conditions": [
+    "clean",
+    "cube_shift",
+    "gripper_open",
+    "arm_hold"
+  ],
+  "condition_counts": {
+    "clean": {
+      "trials": 15,
+      "successes": 15,
+      "failures": 0
+    },
+    "cube_shift": {
+      "trials": 15,
+      "successes": 0,
+      "failures": 15
+    },
+    "gripper_open": {
+      "trials": 15,
+      "successes": 1,
+      "failures": 14
+    },
+    "arm_hold": {
+      "trials": 15,
+      "successes": 14,
+      "failures": 1
+    }
+  }
+}
