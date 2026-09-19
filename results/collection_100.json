@@ -1,0 +1,707 @@
+{
+  "attempted": 100,
+  "kept": 100,
+  "discarded": 0,
+  "episodes": [
+    {
+      "source_episode_id": 0,
+      "success": true,
+      "length": 74,
+      "file": "data/pickcube100/episode_000.npz",
+      "peak_lift_m": 0.2662023603916168
+    },
+    {
+      "source_episode_id": 1,
+      "success": true,
+      "length": 74,
+      "file": "data/pickcube100/episode_001.npz",
+      "peak_lift_m": 0.22527773678302765
+    },
+    {
+      "source_episode_id": 2,
+      "success": true,
+      "length": 50,
+      "file": "data/pickcube100/episode_002.npz",
+      "peak_lift_m": 0.022499553859233856
+    },
+    {
+      "source_episode_id": 3,
+      "success": true,
+      "length": 86,
+      "file": "data/pickcube100/episode_003.npz",
+      "peak_lift_m": 0.22102704644203186
+    },
+    {
+      "source_episode_id": 4,
+      "success": true,
+      "length": 76,
+      "file": "data/pickcube100/episode_004.npz",
+      "peak_lift_m": 0.2683277726173401
+    },
+    {
+      "source_episode_id": 5,
+      "success": true,
+      "length": 88,
+      "file": "data/pickcube100/episode_005.npz",
+      "peak_lift_m": 0.21474039554595947
+    },
+    {
+      "source_episode_id": 6,
+      "success": true,
+      "length": 71,
+      "file": "data/pickcube100/episode_006.npz",
+      "peak_lift_m": 0.22424356639385223
+    },
+    {
+      "source_episode_id": 7,
+      "success": true,
+      "length": 74,
+      "file": "data/pickcube100/episode_007.npz",
+      "peak_lift_m": 0.18420010805130005
+    },
+    {
+      "source_episode_id": 8,
+      "success": true,
+      "length": 49,
+      "file": "data/pickcube100/episode_008.npz",
+      "peak_lift_m": 0.0009644702076911926
+    },
+    {
+      "source_episode_id": 9,
+      "success": true,
+      "length": 84,
+      "file": "data/pickcube100/episode_009.npz",
+      "peak_lift_m": 0.2890351116657257
+    },
+    {
+      "source_episode_id": 10,
+      "success": true,
+      "length": 79,
+      "file": "data/pickcube100/episode_010.npz",
+      "peak_lift_m": 0.29208871722221375
+    },
+    {
+      "source_episode_id": 11,
+      "success": true,
+      "length": 82,
+      "file": "data/pickcube100/episode_011.npz",
+      "peak_lift_m": 0.0378025583922863
+    },
+    {
+      "source_episode_id": 12,
+      "success": true,
+      "length": 71,
+      "file": "data/pickcube100/episode_012.npz",
+      "peak_lift_m": 0.06572508811950684
+    },
+    {
+      "source_episode_id": 13,
+      "success": true,
+      "length": 80,
+      "file": "data/pickcube100/episode_013.npz",
+      "peak_lift_m": 0.26182374358177185
+    },
+    {
+      "source_episode_id": 14,
+      "success": true,
+      "length": 76,
+      "file": "data/pickcube100/episode_014.npz",
+      "peak_lift_m": 0.04337326064705849
+    },
+    {
+      "source_episode_id": 15,
+      "success": true,
+      "length": 77,
+      "file": "data/pickcube100/episode_015.npz",
+      "peak_lift_m": 0.16966134309768677
+    },
+    {
+      "source_episode_id": 16,
+      "success": true,
+      "length": 76,
+      "file": "data/pickcube100/episode_016.npz",
+      "peak_lift_m": 0.18687008321285248
+    },
+    {
+      "source_episode_id": 17,
+      "success": true,
+      "length": 67,
+      "file": "data/pickcube100/episode_017.npz",
+      "peak_lift_m": 0.16015854477882385
+    },
+    {
+      "source_episode_id": 18,
+      "success": true,
+      "length": 72,
+      "file": "data/pickcube100/episode_018.npz",
+      "peak_lift_m": 0.16080661118030548
+    },
+    {
+      "source_episode_id": 19,
+      "success": true,
+      "length": 87,
+      "file": "data/pickcube100/episode_019.npz",
+      "peak_lift_m": 0.006775539368391037
+    },
+    {
+      "source_episode_id": 20,
+      "success": true,
+      "length": 64,
+      "file": "data/pickcube100/episode_020.npz",
+      "peak_lift_m": 0.027521472424268723
+    },
+    {
+      "source_episode_id": 21,
+      "success": true,
+      "length": 72,
+      "file": "data/pickcube100/episode_021.npz",
+      "peak_lift_m": 0.1743556261062622
+    },
+    {
+      "source_episode_id": 22,
+      "success": true,
+      "length": 68,
+      "file": "data/pickcube100/episode_022.npz",
+      "peak_lift_m": 0.2006932497024536
+    },
+    {
+      "source_episode_id": 23,
+      "success": true,
+      "length": 76,
+      "file": "data/pickcube100/episode_023.npz",
+      "peak_lift_m": 0.2670398950576782
+    },
+    {
+      "source_episode_id": 24,
+      "success": true,
+      "length": 79,
+      "file": "data/pickcube100/episode_024.npz",
+      "peak_lift_m": 0.2571263015270233
+    },
+    {
+      "source_episode_id": 25,
+      "success": true,
+      "length": 82,
+      "file": "data/pickcube100/episode_025.npz",
+      "peak_lift_m": 0.08230012655258179
+    },
+    {
+      "source_episode_id": 26,
+      "success": true,
+      "length": 84,
+      "file": "data/pickcube100/episode_026.npz",
+      "peak_lift_m": 0.12402160465717316
+    },
+    {
+      "source_episode_id": 27,
+      "success": true,
+      "length": 74,
+      "file": "data/pickcube100/episode_027.npz",
+      "peak_lift_m": 0.13001172244548798
+    },
+    {
+      "source_episode_id": 28,
+      "success": true,
+      "length": 79,
+      "file": "data/pickcube100/episode_028.npz",
+      "peak_lift_m": 0.18608921766281128
+    },
+    {
+      "source_episode_id": 29,
+      "success": true,
+      "length": 71,
+      "file": "data/pickcube100/episode_029.npz",
+      "peak_lift_m": 0.1523297280073166
+    },
+    {
+      "source_episode_id": 30,
+      "success": true,
+      "length": 72,
+      "file": "data/pickcube100/episode_030.npz",
+      "peak_lift_m": 0.18407903611660004
+    },
+    {
+      "source_episode_id": 31,
+      "success": true,
+      "length": 69,
+      "file": "data/pickcube100/episode_031.npz",
+      "peak_lift_m": 0.14339889585971832
+    },
+    {
+      "source_episode_id": 32,
+      "success": true,
+      "length": 80,
+      "file": "data/pickcube100/episode_032.npz",
+      "peak_lift_m": 0.004079151898622513
+    },
+    {
+      "source_episode_id": 33,
+      "success": true,
+      "length": 57,
+      "file": "data/pickcube100/episode_033.npz",
+      "peak_lift_m": 0.04053877294063568
+    },
+    {
+      "source_episode_id": 34,
+      "success": true,
+      "length": 85,
+      "file": "data/pickcube100/episode_034.npz",
+      "peak_lift_m": 0.18166188895702362
+    },
+    {
+      "source_episode_id": 35,
+      "success": true,
+      "length": 66,
+      "file": "data/pickcube100/episode_035.npz",
+      "peak_lift_m": 0.05658803507685661
+    },
+    {
+      "source_episode_id": 36,
+      "success": true,
+      "length": 80,
+      "file": "data/pickcube100/episode_036.npz",
+      "peak_lift_m": 0.28300315141677856
+    },
+    {
+      "source_episode_id": 37,
+      "success": true,
+      "length": 75,
+      "file": "data/pickcube100/episode_037.npz",
+      "peak_lift_m": 0.08014246821403503
+    },
+    {
+      "source_episode_id": 38,
+      "success": true,
+      "length": 79,
+      "file": "data/pickcube100/episode_038.npz",
+      "peak_lift_m": 0.29511934518814087
+    },
+    {
+      "source_episode_id": 39,
+      "success": true,
+      "length": 92,
+      "file": "data/pickcube100/episode_039.npz",
+      "peak_lift_m": 0.0401613786816597
+    },
+    {
+      "source_episode_id": 40,
+      "success": true,
+      "length": 70,
+      "file": "data/pickcube100/episode_040.npz",
+      "peak_lift_m": 0.03816850110888481
+    },
+    {
+      "source_episode_id": 41,
+      "success": true,
+      "length": 80,
+      "file": "data/pickcube100/episode_041.npz",
+      "peak_lift_m": 0.22413572669029236
+    },
+    {
+      "source_episode_id": 42,
+      "success": true,
+      "length": 89,
+      "file": "data/pickcube100/episode_042.npz",
+      "peak_lift_m": 0.2303229123353958
+    },
+    {
+      "source_episode_id": 43,
+      "success": true,
+      "length": 75,
+      "file": "data/pickcube100/episode_043.npz",
+      "peak_lift_m": 0.01625289022922516
+    },
+    {
+      "source_episode_id": 44,
+      "success": true,
+      "length": 72,
+      "file": "data/pickcube100/episode_044.npz",
+      "peak_lift_m": 0.05968156084418297
+    },
+    {
+      "source_episode_id": 45,
+      "success": true,
+      "length": 69,
+      "file": "data/pickcube100/episode_045.npz",
+      "peak_lift_m": 0.01757577806711197
+    },
+    {
+      "source_episode_id": 46,
+      "success": true,
+      "length": 63,
+      "file": "data/pickcube100/episode_046.npz",
+      "peak_lift_m": 0.13603249192237854
+    },
+    {
+      "source_episode_id": 47,
+      "success": true,
+      "length": 83,
+      "file": "data/pickcube100/episode_047.npz",
+      "peak_lift_m": 0.07408200204372406
+    },
+    {
+      "source_episode_id": 48,
+      "success": true,
+      "length": 79,
+      "file": "data/pickcube100/episode_048.npz",
+      "peak_lift_m": 0.21447736024856567
+    },
+    {
+      "source_episode_id": 49,
+      "success": true,
+      "length": 83,
+      "file": "data/pickcube100/episode_049.npz",
+      "peak_lift_m": 0.06977273523807526
+    },
+    {
+      "source_episode_id": 50,
+      "success": true,
+      "length": 78,
+      "file": "data/pickcube100/episode_050.npz",
+      "peak_lift_m": 0.13812313973903656
+    },
+    {
+      "source_episode_id": 51,
+      "success": true,
+      "length": 82,
+      "file": "data/pickcube100/episode_051.npz",
+      "peak_lift_m": 0.275301069021225
+    },
+    {
+      "source_episode_id": 52,
+      "success": true,
+      "length": 68,
+      "file": "data/pickcube100/episode_052.npz",
+      "peak_lift_m": 0.06697824597358704
+    },
+    {
+      "source_episode_id": 53,
+      "success": true,
+      "length": 71,
+      "file": "data/pickcube100/episode_053.npz",
+      "peak_lift_m": 0.14609690010547638
+    },
+    {
+      "source_episode_id": 54,
+      "success": true,
+      "length": 96,
+      "file": "data/pickcube100/episode_054.npz",
+      "peak_lift_m": 0.22701600193977356
+    },
+    {
+      "source_episode_id": 55,
+      "success": true,
+      "length": 76,
+      "file": "data/pickcube100/episode_055.npz",
+      "peak_lift_m": 0.13580071926116943
+    },
+    {
+      "source_episode_id": 56,
+      "success": true,
+      "length": 72,
+      "file": "data/pickcube100/episode_056.npz",
+      "peak_lift_m": 0.2460547238588333
+    },
+    {
+      "source_episode_id": 57,
+      "success": true,
+      "length": 50,
+      "file": "data/pickcube100/episode_057.npz",
+      "peak_lift_m": 0.014868661761283875
+    },
+    {
+      "source_episode_id": 58,
+      "success": true,
+      "length": 87,
+      "file": "data/pickcube100/episode_058.npz",
+      "peak_lift_m": 0.2512954771518707
+    },
+    {
+      "source_episode_id": 59,
+      "success": true,
+      "length": 82,
+      "file": "data/pickcube100/episode_059.npz",
+      "peak_lift_m": 0.2161112129688263
+    },
+    {
+      "source_episode_id": 60,
+      "success": true,
+      "length": 88,
+      "file": "data/pickcube100/episode_060.npz",
+      "peak_lift_m": 0.2515203058719635
+    },
+    {
+      "source_episode_id": 61,
+      "success": true,
+      "length": 70,
+      "file": "data/pickcube100/episode_061.npz",
+      "peak_lift_m": 0.15414102375507355
+    },
+    {
+      "source_episode_id": 62,
+      "success": true,
+      "length": 79,
+      "file": "data/pickcube100/episode_062.npz",
+      "peak_lift_m": 0.11293822526931763
+    },
+    {
+      "source_episode_id": 63,
+      "success": true,
+      "length": 82,
+      "file": "data/pickcube100/episode_063.npz",
+      "peak_lift_m": 0.05622187629342079
+    },
+    {
+      "source_episode_id": 64,
+      "success": true,
+      "length": 88,
+      "file": "data/pickcube100/episode_064.npz",
+      "peak_lift_m": 0.145551860332489
+    },
+    {
+      "source_episode_id": 65,
+      "success": true,
+      "length": 84,
+      "file": "data/pickcube100/episode_065.npz",
+      "peak_lift_m": 0.20645366609096527
+    },
+    {
+      "source_episode_id": 66,
+      "success": true,
+      "length": 92,
+      "file": "data/pickcube100/episode_066.npz",
+      "peak_lift_m": 0.29834264516830444
+    },
+    {
+      "source_episode_id": 67,
+      "success": true,
+      "length": 62,
+      "file": "data/pickcube100/episode_067.npz",
+      "peak_lift_m": 0.06022537872195244
+    },
+    {
+      "source_episode_id": 68,
+      "success": true,
+      "length": 81,
+      "file": "data/pickcube100/episode_068.npz",
+      "peak_lift_m": 0.06861786544322968
+    },
+    {
+      "source_episode_id": 69,
+      "success": true,
+      "length": 82,
+      "file": "data/pickcube100/episode_069.npz",
+      "peak_lift_m": 0.19337791204452515
+    },
+    {
+      "source_episode_id": 70,
+      "success": true,
+      "length": 69,
+      "file": "data/pickcube100/episode_070.npz",
+      "peak_lift_m": 0.12005515396595001
+    },
+    {
+      "source_episode_id": 71,
+      "success": true,
+      "length": 81,
+      "file": "data/pickcube100/episode_071.npz",
+      "peak_lift_m": 0.2866215109825134
+    },
+    {
+      "source_episode_id": 72,
+      "success": true,
+      "length": 75,
+      "file": "data/pickcube100/episode_072.npz",
+      "peak_lift_m": 0.22788310050964355
+    },
+    {
+      "source_episode_id": 73,
+      "success": true,
+      "length": 80,
+      "file": "data/pickcube100/episode_073.npz",
+      "peak_lift_m": 0.05659976974129677
+    },
+    {
+      "source_episode_id": 74,
+      "success": true,
+      "length": 74,
+      "file": "data/pickcube100/episode_074.npz",
+      "peak_lift_m": 0.10566464066505432
+    },
+    {
+      "source_episode_id": 75,
+      "success": true,
+      "length": 79,
+      "file": "data/pickcube100/episode_075.npz",
+      "peak_lift_m": 0.28191205859184265
+    },
+    {
+      "source_episode_id": 76,
+      "success": true,
+      "length": 80,
+      "file": "data/pickcube100/episode_076.npz",
+      "peak_lift_m": 0.25456467270851135
+    },
+    {
+      "source_episode_id": 77,
+      "success": true,
+      "length": 68,
+      "file": "data/pickcube100/episode_077.npz",
+      "peak_lift_m": 0.10473820567131042
+    },
+    {
+      "source_episode_id": 78,
+      "success": true,
+      "length": 61,
+      "file": "data/pickcube100/episode_078.npz",
+      "peak_lift_m": 0.0451839379966259
+    },
+    {
+      "source_episode_id": 79,
+      "success": true,
+      "length": 75,
+      "file": "data/pickcube100/episode_079.npz",
+      "peak_lift_m": 0.08065123856067657
+    },
+    {
+      "source_episode_id": 80,
+      "success": true,
+      "length": 99,
+      "file": "data/pickcube100/episode_080.npz",
+      "peak_lift_m": 0.12514057755470276
+    },
+    {
+      "source_episode_id": 81,
+      "success": true,
+      "length": 72,
+      "file": "data/pickcube100/episode_081.npz",
+      "peak_lift_m": 0.18113568425178528
+    },
+    {
+      "source_episode_id": 82,
+      "success": true,
+      "length": 85,
+      "file": "data/pickcube100/episode_082.npz",
+      "peak_lift_m": 0.01896750181913376
+    },
+    {
+      "source_episode_id": 83,
+      "success": true,
+      "length": 75,
+      "file": "data/pickcube100/episode_083.npz",
+      "peak_lift_m": 0.2508474886417389
+    },
+    {
+      "source_episode_id": 84,
+      "success": true,
+      "length": 77,
+      "file": "data/pickcube100/episode_084.npz",
+      "peak_lift_m": 0.03908204659819603
+    },
+    {
+      "source_episode_id": 85,
+      "success": true,
+      "length": 70,
+      "file": "data/pickcube100/episode_085.npz",
+      "peak_lift_m": 0.11187970638275146
+    },
+    {
+      "source_episode_id": 86,
+      "success": true,
+      "length": 77,
+      "file": "data/pickcube100/episode_086.npz",
+      "peak_lift_m": 0.1547904759645462
+    },
+    {
+      "source_episode_id": 87,
+      "success": true,
+      "length": 85,
+      "file": "data/pickcube100/episode_087.npz",
+      "peak_lift_m": 0.26193156838417053
+    },
+    {
+      "source_episode_id": 88,
+      "success": true,
+      "length": 82,
+      "file": "data/pickcube100/episode_088.npz",
+      "peak_lift_m": 0.144733265042305
+    },
+    {
+      "source_episode_id": 89,
+      "success": true,
+      "length": 83,
+      "file": "data/pickcube100/episode_089.npz",
+      "peak_lift_m": 0.27714961767196655
+    },
+    {
+      "source_episode_id": 90,
+      "success": true,
+      "length": 89,
+      "file": "data/pickcube100/episode_090.npz",
+      "peak_lift_m": 0.2775714099407196
+    },
+    {
+      "source_episode_id": 91,
+      "success": true,
+      "length": 82,
+      "file": "data/pickcube100/episode_091.npz",
+      "peak_lift_m": 0.011183466762304306
+    },
+    {
+      "source_episode_id": 92,
+      "success": true,
+      "length": 92,
+      "file": "data/pickcube100/episode_092.npz",
+      "peak_lift_m": 0.2670280933380127
+    },
+    {
+      "source_episode_id": 93,
+      "success": true,
+      "length": 83,
+      "file": "data/pickcube100/episode_093.npz",
+      "peak_lift_m": 0.1151466965675354
+    },
+    {
+      "source_episode_id": 94,
+      "success": true,
+      "length": 74,
+      "file": "data/pickcube100/episode_094.npz",
+      "peak_lift_m": 0.1279624104499817
+    },
+    {
+      "source_episode_id": 95,
+      "success": true,
+      "length": 83,
+      "file": "data/pickcube100/episode_095.npz",
+      "peak_lift_m": 0.25806382298469543
+    },
+    {
+      "source_episode_id": 96,
+      "success": true,
+      "length": 83,
+      "file": "data/pickcube100/episode_096.npz",
+      "peak_lift_m": 0.21841756999492645
+    },
+    {
+      "source_episode_id": 97,
+      "success": true,
+      "length": 92,
+      "file": "data/pickcube100/episode_097.npz",
+      "peak_lift_m": 0.27515164017677307
+    },
+    {
+      "source_episode_id": 98,
+      "success": true,
+      "length": 81,
+      "file": "data/pickcube100/episode_098.npz",
+      "peak_lift_m": 0.13714241981506348
+    },
+    {
+      "source_episode_id": 99,
+      "success": true,
+      "length": 84,
+      "file": "data/pickcube100/episode_099.npz",
+      "peak_lift_m": 0.01090475544333458
+    }
+  ]
+}

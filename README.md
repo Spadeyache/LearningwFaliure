@@ -1,8 +1,12 @@
-# PickCube clean episodes (Step 1)
+# PickCube failure-detection research pipeline
 
 ManiSkill3 PickCube-v1 with the Panda and official motion-planning demonstrations.
-No model training or perturbations. One compressed, pickle-free NPZ per successful
+The clean-collection stage stores one compressed, pickle-free NPZ per successful
 episode. Load with `np.load(path, allow_pickle=False)`.
+
+The staged research scope is in [docs/RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md).
+[Step 2: predictor and validation](docs/STEP2.md) is complete. The sections below
+document the original clean-data stage.
 
 ## Machine and setup
 
