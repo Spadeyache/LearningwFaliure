@@ -84,30 +84,14 @@ Sources:
 
 ## Observed replay outcomes
 
-All 60 trials passed clean-prefix checks; all 15 clean controls reproduced their
-states, pixels, rewards and flags exactly. The intervention outcome counts are:
+All 60 trials passed clean-prefix checks. All 15 clean controls reproduced
+states, pixels, rewards and flags exactly.
 
-{
-  "clean": {
-    "trials": 15,
-    "successes": 15,
-    "failures": 0
-  },
-  "cube_shift": {
-    "trials": 15,
-    "successes": 0,
-    "failures": 15
-  },
-  "gripper_open": {
-    "trials": 15,
-    "successes": 1,
-    "failures": 14
-  },
-  "arm_hold": {
-    "trials": 15,
-    "successes": 14,
-    "failures": 1
-  }
-}
+| Condition | Trials | Successes | Failures |
+|---|---:|---:|---:|
+| clean | 15 | 15 | 0 |
+| cube_shift | 15 | 0 | 15 |
+| gripper_open | 15 | 1 | 14 |
+| arm_hold | 15 | 14 | 1 |
 
 These are simulator task outcomes, not detector performance measurements.

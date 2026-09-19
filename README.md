@@ -4,10 +4,24 @@ ManiSkill3 PickCube-v1 with the Panda and official motion-planning demonstration
 The clean-collection stage stores one compressed, pickle-free NPZ per successful
 episode. Load with `np.load(path, allow_pickle=False)`.
 
-The staged research scope is in [docs/RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md).
-[Step 2: predictor and validation](docs/STEP2.md) is complete.
-[Step 3: calibration and perturbation replay](docs/STEP3.md) defines the locked evaluation setup. The sections below
-document the original clean-data stage.
+## Completed stages
+
+1. Clean data collection and exact replay (documented below).
+2. [Clean-success pose prediction](docs/STEP2.md): trained GRU checkpoint and baseline comparisons.
+3. [Clean-only calibration and perturbed replay](docs/STEP3.md): locked thresholds and 60 held-out trials.
+4. [Held-out evaluation and failure analysis](RESULTS.md): measured alarms, prediction errors, and limitations.
+
+The research scope is in [docs/RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md).
+This is a working state-based prototype; the evaluation shows missed failures and
+alarms on recoveries. Read RESULTS.md before interpreting an alarm as task failure.
+Code, the small trained checkpoint, manifests, reports and figures are committed.
+Large datasets and per-step evaluation traces remain on disk and are Git-ignored.
+
+After the environment setup below, score a saved episode with:
+
+    python scripts/score_episode.py data/perturbed/episode_041__cube_shift.npz --output runs/my_scores.npz
+
+The remaining sections document the original clean-data stage.
 
 ## Machine and setup
 

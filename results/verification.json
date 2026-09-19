@@ -1,0 +1,11 @@
+{
+  "unit_tests_passed": 10,
+  "clean_step1_exact_replays": 20,
+  "held_out_clean_controls_exact": 15,
+  "perturbation_clean_prefix_checks": 60,
+  "streaming_batch_example": "episode_041__cube_shift",
+  "streaming_pose_absolute_tolerance": 1e-06,
+  "streaming_score_absolute_tolerance": 0.0001,
+  "streaming_alarm_flags_identical": true,
+  "model_and_thresholds_locked_before_test_scoring": true
+}
