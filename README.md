@@ -1,219 +1,190 @@
-# PickCube failure-detection research pipeline
+# Gripping and lifting PPO learning workspace
 
-ManiSkill3 PickCube-v1 with the Panda and official motion-planning demonstrations.
-The clean-collection stage stores one compressed, pickle-free NPZ per successful
-episode. Load with `np.load(path, allow_pickle=False)`.
+This workspace has supporting tools for your robotic gripping/lifting project.
+**No gripping policy, PPO trainer, or weight estimator has been implemented.**
+The existing simulator is ManiSkill 3.0.1 / SAPIEN 3.0.3 with Gymnasium and
+PyTorch. A PPO implementation has not been selected; `framework` is intentionally
+`null`. Choose it before adding a training adapter or dependencies.
 
-## Completed stages
+The previous failure-detection pipeline, demonstrations, datasets, predictor
+checkpoints, reports, figures, tests and archived documentation have been deleted
+at your request. The simulator smoke check and installed dependencies are retained.
 
-1. Clean data collection and exact replay (documented below).
-2. [Clean-success pose prediction](docs/STEP2.md): trained GRU checkpoint and baseline comparisons.
-3. [Clean-only calibration and perturbed replay](docs/STEP3.md): locked thresholds and 60 held-out trials.
-4. [Held-out evaluation and failure analysis](RESULTS.md): measured alarms, prediction errors, and limitations.
+## Start here
 
-The research scope is in [docs/RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md).
-This is a working state-based prototype; the evaluation shows missed failures and
-alarms on recoveries. Read RESULTS.md before interpreting an alarm as task failure.
-Code, the small trained checkpoint, manifests, reports and figures are committed.
-Large datasets and per-step evaluation traces remain on disk and are Git-ignored.
-
-After the environment setup below, score a saved episode with:
-
-    python scripts/score_episode.py data/perturbed/episode_041__cube_shift.npz --output runs/my_scores.npz
-
-The remaining sections document the original clean-data stage.
-
-## Machine and setup
-
-Tested in Ubuntu 24.04.2 / WSL2, Python 3.10.18; NVIDIA RTX 3050 Laptop GPU,
-4 GiB VRAM; CUDA available in PyTorch; 838 GiB disk free before installation.
-**This run uses CPU physics and CPU Vulkan rendering (Mesa lavapipe).**
-CUDA access does not provide the missing native NVIDIA Vulkan driver in WSL.
-
-Versions: ManiSkill 3.0.1, SAPIEN 3.0.3, PyTorch 2.14.0+cu130, NumPy 2.2.6.
-All 103 dependencies are pinned in requirements-lock.txt; the environment uses 6.2 GiB.
-No system drivers were changed. From Windows, select the correct distribution:
-
-```powershell
-wsl -d Ubuntu --cd /home/ubuntu/faliure
-```
-
-For a fresh Python environment, run in the Linux project directory:
+Run these commands in Bash:
 
 ```bash
+cd /home/ubuntu/faliure
+source scripts/activate_grip.sh
+python -m grip_support --help
+python -m grip_support setup-check
+python -m grip_support sim-check
+python -m grip_support train --config configs/grip.json --check-only
+```
+
+`setup-check` should print `All installed packages are compatible`, five
+`IMPORT OK` lines and `SETUP OK` with this workspace's Python path (exit 0).
+`sim-check` starts upstream **PickCube**, resets, renders and takes one sampled
+action. Expected output includes RGB shape `[128,128,3]`, `physx_cpu`, and
+`sapien_cpu` (exit 0). The image goes to `checks/grip-smoke/first_frame.png`.
+A false success flag is normal for a one-step check. This does not validate your
+future gripping environment or train/evaluate a policy.
+
+`train --check-only` currently prints `CORE INCOMPLETE: train`, lists missing
+implementations, and exits **2**. This is expected. `train`, `resume` and
+`evaluate` refuse to run until the learner core reports readiness. Invalid JSON,
+missing imports/files, runtime failures or checkpoint incompatibility exit **1**.
+`--check-only` checks configuration/core readiness; it never performs a rollout.
+
+### Recreate the Python environment
+
+The existing `.venv` is usable; do not reinstall just to run checks. For a fresh
+checkout, with `uv` available:
+
+```bash
+cd /home/ubuntu/faliure
+export UV_CACHE_DIR="$PWD/.cache/uv"
 uv venv --python 3.10 .venv
 uv pip install --python .venv/bin/python -r requirements-lock.txt
+source scripts/activate_grip.sh
+python -m grip_support setup-check
 ```
 
-For each new shell, activate it and select this machine's existing Mesa driver:
+The lock file captures the existing 103-package stack, including CUDA dependencies;
+installation can be large and needs network access. `uv pip` operates on the
+explicit Python without requiring a pip module inside the environment. Keep
+this lock to reproduce the installed dependency stack. After choosing an RL framework, record
+its exact compatible dependencies before updating the lock. No new dependency
+was needed for these support tools.
+
+Activation selects the venv and writable uv/Matplotlib caches, project-local
+ManiSkill assets and (when present) Mesa lavapipe Vulkan for CPU rendering.
+It preserves an explicitly set `VK_ICD_FILENAMES`. Run the module commands from
+the project root so Python can find `grip_support`; no package installation is
+needed. `.venv` is the **Python environment**, while a ManiSkill/Gymnasium
+**simulation environment** is a separate object created by your task code.
+
+## Your implementation boundary
+
+Start with [grip_support/core.py](grip_support/core.py). `missing(config, mode)`
+returns remaining work for a requested command. Make it mode-specific as needed;
+remove a blocker only after implementing and checking it. `run(mode, config,
+context, checkpoint)` is your integration entry point.
+
+You own the simulation dynamics/task, observation and action definitions, reward,
+termination, PPO settings/experiments, estimator, metrics and evaluation protocol.
+The intended input information is true object weight, object pose, gripper pose,
+gripper width and contact force during training; deployment substitutes estimated
+weight. You define layout, units, coordinate frames, scaling and extraction.
+You also define how slip/lift outcomes update estimates, object identity and when
+estimates persist or reset. No estimator update formula or persistence policy is
+provided here.
+
+`configs/grip.json` contains only supporting settings plus empty dictionaries
+for your decisions. `seed` seeds Python, NumPy and PyTorch at run startup; your
+core must seed simulator resets, spaces, workers and other generators. `run_root`
+is resolved relative to the project root. `core_module` selects the importable
+learner implementation. The loader rejects malformed top-level keys/types. It
+does not validate task or PPO parameters; add that validation in your core.
+
+## Commands and run artifacts
+
+After implementing the core, the command flow is:
 
 ```bash
-source .venv/bin/activate
-export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
-export MS_ASSET_DIR=/home/ubuntu/faliure/.maniskill/assets
-export MS_SKIP_ASSET_DOWNLOAD_PROMPT=1
-export OMP_NUM_THREADS=4
+python -m grip_support train --config configs/grip.json --check-only
+python -m grip_support train --config configs/grip.json
+# Substitute an actual run directory and checkpoint produced by your core:
+python -m grip_support resume --config runs/grip/RUN/config.json --checkpoint runs/grip/RUN/checkpoints/latest.pt
+python -m grip_support evaluate --config runs/grip/RUN/config.json --checkpoint runs/grip/RUN/checkpoints/latest.pt
 ```
 
-## Reproduce steps 2-5
+`RUN` is a placeholder: use the directory printed as `RUN: ...`. Each execution
+gets a unique UTC-prefixed directory under `runs/grip`, including resumed and
+evaluation executions. A readiness failure creates no run. The directory contains:
+
+- `config.json`: exact parsed configuration.
+- `metadata.json`: command, source checkpoint, Python/package versions, platform,
+  Git commit/status and relevant environment variables.
+- `tracked-changes.patch`: tracked working-tree changes at startup.
+- `events.jsonl`: timestamped start/completion/failure and checkpoint events.
+- `checkpoints/`: files saved by your core using `context.save('latest.pt', state)`.
+
+Call `context.log('your_event', field=value)` for your chosen diagnostics; values
+must be finite JSON-serializable data. Support logs define no performance metrics.
+The support layer never saves a model automatically. `context.save()` writes a
+schema/config-tagged PyTorch checkpoint through a temporary file and atomic rename;
+reusing a name replaces that checkpoint. Choose your own checkpoint cadence and
+retention. Provide tensors/primitives/containers compatible with
+`torch.load(weights_only=True)`; load on CPU and move states to your selected device.
+Do not put arbitrary custom Python objects in checkpoints.
+
+## Small checks before long training
+
+First run setup and upstream simulator checks above. Then implement and run your
+own small task check: reset, validate finite observations against your space and
+units, apply valid actions, inspect contacts/lift and verify your reward and
+termination. Do this before enabling the trainer. The upstream sim check cannot
+catch errors in custom observations, actions or task logic.
+
+Create a separate configuration for a short run **after you select its parameters**:
 
 ```bash
-# 2: built-in environment reset/step; checks/first_frame.png
-python scripts/check_environment.py
-
-# 3: official download and official CLI replay of three demos
-python -m mani_skill.utils.download_demo PickCube-v1 -o demos
-python scripts/replay_official_demos.py --count 3
-
-# 4: attempt 20 source episodes; keep only final successes
-python scripts/collect_clean_episodes.py
-
-# 5: print shapes/dtypes; checks/cube_z_episode_000.png
-python scripts/inspect_episode.py data/pickcube/episode_000.npz
-
-# Restore the saved episode without any perturbation and compare every step
-python scripts/verify_saved_replay.py data/pickcube/episode_000.npz
+cp configs/grip.json configs/grip-small.json
+# Edit grip-small.json with your chosen task/PPO settings and small-run limits.
+python -m grip_support train --config configs/grip-small.json --check-only
+python -m grip_support train --config configs/grip-small.json
 ```
 
-The collector refuses to overwrite existing episodes. For another run use
-`--output-dir data/pickcube_rerun`; `--num-episodes N` changes the number
-attempted (default 20), not the number of successes targeted.
-Files are numbered contiguously; stdout and collection_summary.json record
-kept/discarded counts and original source IDs. No failed replay is retried.
+Implement the chosen limit in your core; no step-count field or default PPO
+hyperparameters have been imposed. Check that real rollouts/updates occur and
+that you can save/load/resume a checkpoint before launching a long job. Readiness
+is your core's self-report, not evidence that rollouts or PPO are correct.
 
-The replay launcher links the original HDF5 and writes a scratch metadata copy
-with `render_backend="cpu"` in checks/replay_input. It then runs the unmodified CLI:
+## Isolate problems
+
+| Symptom | Next check |
+|---|---|
+| Missing package or incompatible dependencies | Activate, check `which python`, run `setup-check`; use `uv pip check --python .venv/bin/python`. |
+| Simulator fails before task code | Run `sim-check`; inspect Vulkan ICD, assets and full error. GPU CUDA availability does not imply Vulkan rendering works. |
+| Upstream simulator works, custom task fails | Check task registration/reset and your simulator construction independently of PPO. |
+| Invalid observations/actions | Check shapes, dtypes, finite values, spaces, units, frames and normalization at reset and every step; compare training/deployment weight substitution. |
+| Training crashes or produces invalid updates | Keep task checks passing, inspect run failure events and invoke your core directly for a full traceback; check your PPO tensors/optimizer/checkpoint restoration. |
+| Training runs but behavior is poor | Use your chosen evaluation protocol; inspect real trajectories, task/reward signals, exploration and estimator behavior. Setup success cannot diagnose policy quality. |
+
+For a full traceback of CLI runtime errors:
 
 ```bash
-python -m mani_skill.trajectory.replay_trajectory \
-  --traj-path checks/replay_input/trajectory.h5 \
-  --use-first-env-state -b physx_cpu -o rgb --shader minimal \
-  --count 3 --num-envs 1 --reward-mode normalized_dense --record-rewards --save-traj
+python -c 'from grip_support.__main__ import main; raise SystemExit(main())' train --config configs/grip-small.json
 ```
 
-The original download is unchanged. The collector uses the same installed
-`replay_cpu_sim` function, with a small Gym wrapper that captures outputs.
-Only the initial state is restored; subsequent states come from action-driven
-physics. It retains the original pd_joint_pos controller and uses
-`reconfiguration_freq=1` to rebuild the scene at each reset.
+## Reproduce and resume
 
-## NPZ keys (schema 2)
+Use a run's saved `config.json`, same dependency lock, Git commit **and** local
+changes, same simulator assets/backend and environment variables. Preserve your
+new source/config files explicitly: metadata lists untracked files but the patch
+does not capture their contents. Save them in version control or a separate copy.
+The package versions are recorded, but the whole environment/assets are not bundled.
+A seed alone does not guarantee determinism across hardware, physics or versions.
 
-T = number of actions. State/image arrays have T+1 entries, starting with the initial
-observation. Action t takes state t to state t+1; reward/success/terminal flags
-at t describe the resulting state. Per-step arrays have no singleton environment axis.
+Resume loads the supplied checkpoint only after readiness checks, verifies its
+schema and exact config digest, and passes the payload to your core. Restore
+`checkpoint['state']` yourself; loading does not automatically restore the model.
+Save/restore policy, optimizer, learning counters/schedules, normalization,
+Python/NumPy/PyTorch RNG states and your chosen estimator/object state as required.
+If exact continuation needs simulator state, buffers or worker RNGs, you must
+capture those too. Define whether resume continues mid-episode or resets; document
+any approximation. The startup seed is applied before your core restores RNG state.
+Checkpoint writes are atomic on the filesystem but are not power-loss durability
+or backup guarantees. Changed configuration is rejected; define an explicit,
+reviewable migration if you need to change it rather than silently bypassing this.
 
-All Cartesian poses use **world coordinates, metres, z up** (tabletop z=0).
-Pose layout is **[x,y,z,qw,qx,qy,qz]**, with dimensionless, scalar-first quaternions.
-Joint values are coordinates about/along each robot joint's own axis.
+## Setup verification in this session
 
-| Key | Shape | dtype | Meaning / units / frame |
-|---|---|---|---|
-| rgb | (T+1,128,128,3) | uint8 | Default base_camera, RGB pixels 0-255, minimal shader |
-| qpos | (T+1,9) | float32 | Seven arm angles in rad, then two finger displacements in m |
-| qvel | (T+1,9) | float32 | Same order, arm rad/s and fingers m/s |
-| ee_pose | (T+1,7) | float32 | World pose of panda_hand_tcp (tool center) |
-| cube_pose | (T+1,7) | float32 | World pose of cube center |
-| goal_pos | (T+1,3) | float32 | Target cube-center world position, m |
-| action | (T,8) | float32 | Seven absolute target arm angles (rad), normalized gripper command [-1,1] |
-| reward | (T,) | float32 | ManiSkill normalized dense reward, dimensionless |
-| success | (T,) | bool | Task success after each action; final value must be True |
-| terminated, truncated | (T,) each | bool | Gym termination and time-limit flags, independent of success |
-| seed | () | int64 | Environment reset seed |
-| sim_freq, control_freq | () each | int64 | Physics 100 Hz, control/image sampling 20 Hz |
-| control_mode | () | Unicode | pd_joint_pos |
-| env_id | () | Unicode | PickCube-v1 |
-| sim_backend, render_backend | () each | Unicode | physx_cpu and sapien_cpu |
-| camera_name | () | Unicode | base_camera |
-| joint_names | (9,) | Unicode | Seven Panda arm joints followed by two finger joints |
-| reset_state/actors/cube | (13,) | float32 | Exact original reset input for cube; layout below |
-| reset_state/actors/goal_site | (13,) | float32 | Exact original reset input for goal |
-| reset_state/actors/table-workspace | (13,) | float32 | Exact original reset input for registered table actor |
-| reset_state/articulations/panda | (31,) | float32 | Exact original robot reset input |
-| initial_state/actors/cube | (1,13) | float32 | Observed simulator state after restoration |
-| initial_state/actors/goal_site | (1,13) | float32 | Observed initial goal state |
-| initial_state/actors/table-workspace | (1,13) | float32 | Observed initial registered table state |
-| initial_state/articulations/panda | (1,31) | float32 | Observed initial robot state |
-| initial_controller_json | () | Unicode JSON | Controller state before action 0; empty object for pd_joint_pos |
-| env_kwargs_json | () | Unicode JSON | Construction overrides, renderer, shader, scene-reset settings, time limit |
-| reset_kwargs_json | () | Unicode JSON | Reset seed and options |
-| versions_json | () | Unicode JSON | ManiSkill, SAPIEN, PyTorch, NumPy, Gymnasium versions |
-| source_episode_json | () | Unicode JSON | Source metadata, with reset seed normalized by official replay |
-| source_episode_id | () | int64 | Original HDF5 traj_ID |
-| source_sha256 | () | Unicode | SHA-256 of official source HDF5 |
-| schema_version | () | int64 | 2 |
-
-Actor state layout: position (3, world m), quaternion (4), linear velocity
-(3, world m/s), angular velocity (3, world rad/s).
-Robot state: those 13 root-link quantities, then 9 qpos and 9 qvel.
-The gripper command maps [-1,1] to target finger positions [-0.01,0.04] m;
-negative targets provide closing force. The two observed fingers remain separate.
-
-**Restore reset_state, not initial_state.** Rebuild the nested dictionary from
-slash-separated keys, call reset with reset_kwargs, then set_state_dict and
-agent.set_controller_state. The verifier provides executable restoration code.
-The exact input and read-back state are both saved because float round trips
-through PhysX can change the robot root position slightly.
-
-## Results and gotchas
-
-The official CLI check succeeded on **3/3** demos. Final collection: **20 attempted,
-20 kept, 0 discarded** (100%); **1,493 actions**, lengths **49-88** (mean 74.65),
-**45.51 MiB** compressed. Counts and lengths are recorded in
-data/pickcube/collection_summary.json and checks/dataset_summary.json.
-Episode 000 has 74 actions: RGB (75,128,128,3), joints (75,9), poses (75,7);
-its cube rises from 0.0200 m to 0.2862 m (26.62 cm).
-**All 20 NPZs independently replayed with zero state error, matching rewards and
-success/terminal flags, and bitwise-identical RGB frames.** Comparisons are saved
-in checks/replay_verification.json.
-
-- **19/20** final episodes have truncated=True; source trajectories can exceed the nominal 50-step limit. Finish all saved
-  actions, as the official replayer does; do not stop at the first terminated or
-  truncated flag. Final success is the collection criterion.
-- Peak lifts range from **0.00096 to 0.29209 m**. A low goal can succeed with very little lift. Success is the task's placement
-  and robot-static criterion, not a minimum-lift or continued-grasp criterion.
-- Ground-truth poses/labels and 20 selected motion-planning episodes are a useful
-  starting dataset, not evidence of failure-detection performance.
-- Exact replay is checked on this installed CPU stack, not guaranteed across
-  software versions, hardware, physics backends, or changed simulation settings.
-
-Resolved setup/reproducibility errors (original logs retained in checks):
-1. The command runner chose the wrong WSL distribution and lacked bwrap in that
-   distribution. Commands explicitly targeted Ubuntu, which contains the project.
-2. Default Vulkan selection failed with
-   "RuntimeError: vk::createInstanceUnique: ErrorIncompatibleDriver".
-   Selecting the existing lavapipe ICD fixed rendering.
-3. The official CLI requested CUDA rendering and failed with
-   'RuntimeError: Failed to find a supported physical device "cuda:0"'.
-   Its CLI has no renderer flag; the launcher changes only a scratch metadata copy.
-4. Reapplying the read-back initial state introduced a 1.49e-8 m root-position
-   change and a later 8.41e-6 velocity mismatch at step 36.
-   Preserving the exact reset input removed this error for episode 000.
-5. Reusing the scene still caused episode 001 to differ when replayed independently
-   (velocity difference 1.07e-5 at step 41). Scene reconfiguration at reset addresses
-   dependence on the previous episode; the strict 1e-6 comparison is retained.
-6. SAPIEN warns about missing NVIDIA glvnd ICD. CPU Vulkan headless rendering
-   works despite this warning. No warning was suppressed.
-7. The installed official CPU HDF5 recorder appears to replace its initial saved
-   state with demo state 1 under use_first_env_state. Its HDF5 is only a smoke
-   artifact here; NPZ captures the live initial observation and exact reset input.
-
-## API references
-
-Installed package source was checked against these official documentation/source pages:
-
-- [Installation and Vulkan](https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/installation.html).
-- [Official demo setup](https://maniskill.readthedocs.io/en/latest/user_guide/learning_from_demos/setup.html)
-  and [download_demo.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/utils/download_demo.py): download module/output directory.
-- [Replay guide](https://maniskill.readthedocs.io/en/latest/user_guide/datasets/replay.html)
-  and [replay_trajectory.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/trajectory/replay_trajectory.py): Args, replay_cpu_sim, initial restoration, final-success filtering.
-- [record.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/utils/wrappers/record.py)
-  and [trajectory utilities](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/trajectory/utils/__init__.py): RecordEpisode, HDF5/JSON layout, index_dict.
-- [sapien_env.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/envs/sapien_env.py)
-  and [backend.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/envs/utils/system/backend.py): gym.make arguments, reset/step/get_obs, state get/set, frequencies, scene reconfiguration and CPU rendering.
-- [pick_cube.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/envs/tasks/tabletop/pick_cube.py): default camera, cube/goal poses, success and rewards.
-- [panda.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/agents/robots/panda/panda.py)
-  and [base_agent.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/agents/base_agent.py): TCP, joint/action order and units, controller state.
-- [actor.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/utils/structs/actor.py),
-  [articulation.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/utils/structs/articulation.py),
-  [pose.py](https://github.com/mani-skill/ManiSkill/blob/main/mani_skill/utils/structs/pose.py): packed state, qpos/qvel, active joints and scalar-first poses.
+Python 3.10.18; all 103 installed packages compatible; PyTorch/NumPy/Gymnasium/
+ManiSkill/SAPIEN imports succeeded. PickCube reset/render/step passed on CPU.
+CUDA was unavailable here (the older project's hardware report differs).
+Support checkpoint/log/config checks are independent of task learning. No training
+or policy-performance claim is made. The next core task is to define and implement
+your gripping/lifting environment and its observation/action contract.

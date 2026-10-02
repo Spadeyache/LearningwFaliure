@@ -1,22 +1,9 @@
 .venv/
 .maniskill/
-demos/
-data/
+.cache/
 __pycache__/
 *.pyc
-checks/replay_input/
-checks/collector_audit/
-
-checks/collection_before_scene_reset/
-checks/reconfigured_test/
-# Generated diagnostics; keep the small validation artifacts below.
-checks/*
-!checks/first_frame.png
-!checks/cube_z_episode_000.png
-!checks/machine.txt
-!checks/runtime.json
-!checks/dataset_summary.json
-!checks/inspection.txt
-!checks/replay_verification.json
+checks/
 runs/
 checkpoints/
+data/

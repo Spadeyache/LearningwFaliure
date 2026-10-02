@@ -1,0 +1,10 @@
+{
+  "seed": 0,
+  "run_root": "runs/grip",
+  "core_module": "grip_support.core",
+  "framework": null,
+  "task": {},
+  "ppo": {},
+  "estimator": {},
+  "evaluation": {}
+}

@@ -13,6 +13,7 @@ import mani_skill.envs  # Registers PickCube-v1.
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--render-backend", default="cpu")
+    parser.add_argument("--output-dir", type=Path, default=Path("checks"))
     args = parser.parse_args()
     env = gym.make(
         "PickCube-v1", num_envs=1, obs_mode="rgb",
@@ -26,8 +27,8 @@ def main():
         rgb = obs["sensor_data"]["base_camera"]["rgb"][0].cpu().numpy()
         assert rgb.dtype == np.uint8 and rgb.ndim == 3 and rgb.shape[-1] == 3
         assert rgb.max() > rgb.min(), "Camera frame is constant"
-        Path("checks").mkdir(exist_ok=True)
-        Image.fromarray(rgb).save("checks/first_frame.png")
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(rgb).save(args.output_dir / "first_frame.png")
         env.action_space.seed(0)
         _, reward, terminated, truncated, info = env.step(env.action_space.sample())
         print(json.dumps({
