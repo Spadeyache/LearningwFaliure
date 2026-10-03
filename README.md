@@ -38,6 +38,32 @@ Put your next plain `.py` files in `learning/` and run them the same way:
 For a first small change, edit `seed`, rerun and compare the saved image.
 You can build up your own code one step at a time without changing the CLI core.
 
+### Inspect the lift reward
+
+With the same environment activated, run `python learning/check_reward.py`.
+It checks six synthetic conditions, then prints named reward components from an
+actual reset and one random action. The synthetic lifts are formula checks, not
+physically achieved or learned behaviour. The original `simulator_starter.py`
+still uses upstream PickCube's reward; this separate check uses `LiftTask`.
+
+The editable provisional settings are near the top of `learning/lift_task.py`:
+`proximity = exp(-distance / 0.10)` using TCP-to-cube-centre distance in metres;
+`reach = 1` when grasped, otherwise `proximity`; `grasp` is 0 or 1; and
+`lift = grasp * clamp(cube_bottom_clearance / 0.08, 0, 1)`.
+The single task score is **0.2 × reach + 0.3 × grasp + 0.5 × lift**, bounded
+between 0 and 1. Confirmed grasp completes reaching. Grasp on the table earns
+0.5; grasp with 4 cm clearance earns 0.75; grasp with at least 8 cm earns 1 and
+ends the episode successfully. The cube's orientation is accounted for when
+finding its lowest point. Raising an empty gripper earns no grasp/lift credit.
+
+Grasp uses ManiSkill Panda's existing two-finger contact test (at least 0.5 N
+per finger and force direction within 85 degrees of its opening axis). There is
+no hold-duration requirement, force penalty or slip penalty yet. Excessive-force
+tuning is deferred. The inherited random goal is not part of this reward or
+success condition. `lift_task.py` also retains an **unvalidated** pose/force
+controller and optional mass-override draft; this check does not use them.
+PPO, network choices, mass sweeps and training remain for later discussion.
+
 ## Folder purposes
 
 | Path | Purpose |
