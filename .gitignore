@@ -3,7 +3,6 @@
 .cache/
 __pycache__/
 *.pyc
-checks/
 runs/
 checkpoints/
 data/

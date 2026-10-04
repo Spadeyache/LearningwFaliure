@@ -29,7 +29,7 @@ def main():
         print(f'SETUP OK: {sys.executable}')
         return 0
     if args.command == 'sim-check':
-        return subprocess.run([sys.executable, str(ROOT / 'scripts/check_environment.py'), '--output-dir', str(ROOT / 'checks/grip-smoke')], cwd=ROOT).returncode
+        return subprocess.run([sys.executable, str(ROOT / 'scripts/check_environment.py'), '--output-dir', str(ROOT / 'runs/checks/grip-smoke')], cwd=ROOT).returncode
     config = load_config(args.config)
     core = importlib.import_module(config['core_module'])
     missing = core.missing(config, args.command)

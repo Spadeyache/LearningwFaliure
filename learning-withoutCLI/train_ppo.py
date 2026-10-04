@@ -1,7 +1,15 @@
-"""Run directly: python learning/train_ppo.py. Edit SETTINGS below.
+"""THE COORDINATOR: run python learning-withoutCLI/train_ppo.py.
 
-Read in order: lift_task.py -> ppo.Agent -> this rollout loop -> update_ppo
--> save_checkpoint. PPO adaptation provenance/license are in ppo.py.
+This is the only file you run to train. It imports the other files for you:
+  lift_task.py = simulated task, measurements, reward and robot controller.
+  ppo.py       = actor/critic networks and the calculations that teach them.
+
+Start reading main(), following its numbered comments:
+  set up -> observe -> choose -> move -> record -> learn -> save -> repeat.
+The helper functions above main() are called when those jobs are needed.
+Defining a function does not run it; the main() call at the bottom starts work.
+The check_*.py scripts and 00_simulator_starter.py are separate, optional runs.
+PPO adaptation provenance/license are in ppo.py.
 """
 
 from copy import deepcopy
@@ -21,6 +29,10 @@ from lift_task import (
 from ppo import Agent, SOURCE_COMMIT, generalized_advantages, update_ppo
 
 
+# These settings describe the experiment; they are not learned network weights.
+# STEP = one simulator action. EPISODE = one attempt, from reset to its end.
+# ROLLOUT = the steps collected before learning; it can span several episodes.
+# UPDATE = learning from one rollout, with several small optimizer steps inside.
 # Small CPU starting experiment, NOT settings demonstrated to learn a grasp.
 SETTINGS = {
     "seed": 0,
@@ -53,6 +65,8 @@ SETTINGS = {
 
 def save_checkpoint(path, agent, optimizer, settings, counters, status):
     """Save tensors/primitives atomically; no simulator state or partial rollout."""
+    # Save what has been learned AND Adam's bookkeeping, so learning can continue.
+    # This is different from saving the robot's exact pose for replay.
     payload = {
         "schema_version": 1, "agent": agent.state_dict(),
         "optimizer": optimizer.state_dict(), "settings": deepcopy(settings),
@@ -71,6 +85,7 @@ def save_checkpoint(path, agent, optimizer, settings, counters, status):
 
 def load_checkpoint(path):
     """Return (model, saved data); model.get_action(x, deterministic=True) for use."""
+    # Recreate the network structure, then fill it with previously learned weights.
     saved = torch.load(path, map_location="cpu", weights_only=True)
     if (saved["schema_version"] != 1 or saved["input_fields"] != INPUT_FIELDS
             or saved["input_sizes"] != INPUT_SIZES
@@ -85,6 +100,8 @@ def load_checkpoint(path):
 
 def reset_episode(env, settings, episode_index):
     """Change real mass/inertia before collecting a new episode's observations."""
+    # Called for the first attempt and whenever an episode finishes.
+    # reset() changes the simulation; it does NOT erase what the networks learned.
     mass = settings["masses_kg"][episode_index % len(settings["masses_kg"])]
     observation, _ = env.reset(seed=settings["seed"] + episode_index, options={"mass_kg": mass})
     inputs, vector = read_inputs(env, observation)
@@ -97,6 +114,7 @@ def reset_episode(env, settings, episode_index):
 
 
 def main(settings=None):
+    # 1. SET UP: choose settings, create actor/critic, and create Adam to train them.
     settings = {**deepcopy(SETTINGS), **(settings or {})}
     for name in ("updates", "rollout_steps", "episode_steps", "hidden_size", "update_epochs", "minibatch_size", "save_every_updates"):
         if not isinstance(settings[name], int) or settings[name] <= 0:
@@ -120,6 +138,7 @@ def main(settings=None):
         counters = dict(saved["counters"])
         if settings["updates"] <= counters["updates"]:
             raise ValueError("Set updates above the checkpoint's completed update count")
+    # PPO defines the learning objective; Adam adjusts the weights to reduce it.
     optimizer = torch.optim.Adam(agent.parameters(), lr=settings["learning_rate"], eps=1e-5)
     if saved is not None:
         optimizer.load_state_dict(saved["optimizer"])
@@ -129,16 +148,20 @@ def main(settings=None):
     run_dir.mkdir(parents=True, exist_ok=False)
     (run_dir / "settings.json").write_text(json.dumps(settings, indent=2) + "\n")
     print("Run:", run_dir, flush=True)
+    # LiftTask is defined in lift_task.py. This creates the actual simulated task.
     env = LiftTask(control_mode="pd_ee_pose")
     events = (run_dir / "metrics.jsonl").open("w")
     try:
+        # 2. OBSERVE: inputs is the named dictionary; vector is the same 21 numbers
+        # laid out in a fixed order for the neural networks (shape: one row, 21).
         inputs, vector, mass = reset_episode(env, settings, counters["next_episode"])
         counters["next_episode"] += 1
         episode_return, episode_length = 0.0, 0
         if saved is not None:
             torch.set_rng_state(saved["torch_rng_state"])
             print("Resumed weights/optimizer/counters; starting a fresh episode.", flush=True)
-        agent.train()
+        agent.train()  # Select training mode; this line does not update weights.
+        # Outer loop: collect a rollout, learn from it, then collect another.
         for update in range(counters["updates"] + 1, settings["updates"] + 1):
             # Collect on-policy transitions. Each next value comes from the
             # actual post-action state BEFORE any episode reset.
@@ -147,18 +170,28 @@ def main(settings=None):
                 "terminated", "truncated",
             )}
             rollout_masses = set()
+            # Inner loop: interact with the robot. Weights stay fixed here.
             for _ in range(settings["rollout_steps"]):
+                # 3. CHOOSE: actor proposes an action; critic estimates future reward.
+                # no_grad means "use the networks without building a learning graph".
                 with torch.no_grad():
                     action, latent, logprob, value = agent.get_action_and_value(vector)
+                # 4. MOVE: translate the policy's pose/force request to robot commands.
+                # controller_action() prepares commands; env.step() advances physics.
                 command, targets = controller_action(env, inputs, action, settings)
                 observation, reward, terminated, truncated, info = env.step(command)
                 if not torch.isfinite(reward).all() or not torch.equal(reward, info["task_score"]):
                     raise FloatingPointError("Invalid reward or custom reward bypassed")
+                # LiftTask supplied the reward during step(). Now collect the NEW
+                # measurements, so the next action responds to the robot's new state.
                 next_inputs, next_vector = read_inputs(env, observation)
                 with torch.no_grad():
                     next_value = agent.get_value(next_vector)
                 episode_length += 1
+                # terminated = task ended (success here); truncated = time ran out.
                 truncated = truncated | torch.tensor([episode_length >= settings["episode_steps"]])
+                # 5. RECORD: keep the old inputs, chosen action information, reward
+                # and value estimates together. PPO will use this experience later.
                 values = (vector[0], latent[0], logprob[0], value[0], reward[0],
                           next_value[0], terminated[0], truncated[0])
                 for name, data in zip(storage, values):
@@ -167,6 +200,8 @@ def main(settings=None):
                 rollout_masses.add(mass)
                 episode_return += float(reward.item())
                 inputs, vector = next_inputs, next_vector
+                # Ending an episode starts another attempt, possibly within the SAME
+                # rollout. An episode ending does not itself trigger a PPO update.
                 if bool((terminated | truncated).item()):
                     success = bool(info["success"].item())
                     counters["completed_episodes"] += 1
@@ -182,13 +217,17 @@ def main(settings=None):
                     counters["next_episode"] += 1
                     episode_return, episode_length = 0.0, 0
 
+            # 6. LEARN: the rollout is full. Turn its lists into tensors for PPO.
             batch = {name: torch.stack(data) for name, data in storage.items()}
+            # Advantage: was the outcome better/worse than the critic expected?
+            # Return: estimated future reward used as a target for the critic.
             batch["advantages"], batch["returns"] = generalized_advantages(
                 batch["rewards"], batch["values"], batch["next_values"],
                 batch["terminated"], batch["truncated"], settings["gamma"], settings["gae_lambda"],
             )
             if not all(torch.isfinite(data).all() for data in batch.values()):
                 raise FloatingPointError("Nonfinite rollout")
+            # This call in ppo.py actually changes the actor and critic weights.
             metrics = update_ppo(agent, optimizer, batch, settings)
             counters["updates"] = update
             record = dict(kind="update", **counters, **metrics, masses_kg=sorted(rollout_masses))
@@ -197,6 +236,7 @@ def main(settings=None):
             print(f"Update {update}: steps={counters['steps']} "
                   f"policy_loss={metrics['policy_loss']:.4f} value_loss={metrics['value_loss']:.4f} "
                   f"parameter_change={metrics['parameter_change_l2']:.5f}", flush=True)
+            # 7. SAVE when due. The next outer-loop iteration uses updated networks.
             if update % settings["save_every_updates"] == 0:
                 save_checkpoint(run_dir / f"update_{update:04d}.pt", agent, optimizer, settings, counters, "periodic")
         save_checkpoint(run_dir / "final.pt", agent, optimizer, settings, counters, "complete")
@@ -211,5 +251,7 @@ def main(settings=None):
     return run_dir
 
 
+# Running this file starts main(). Importing it (e.g. from a check script) only
+# makes its functions available; it does not automatically start training.
 if __name__ == "__main__":
     main()

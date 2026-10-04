@@ -1,5 +1,11 @@
 """CPU lift reward, agreed observations, and a simple pose/force adapter.
 
+THE ROBOT SIDE: train_ppo.py creates a LiftTask and calls the helpers here.
+read_inputs() answers "what is happening now?" using the agreed 21 measurements.
+controller_action() turns "what the actor wants" into simulator commands.
+LiftTask supplies reset behaviour, success detection and reward during env.step().
+This file defines the task; it does not train a neural network.
+
 The reward check uses joint positions; train_ppo.py uses the pose/force adapter.
 Its bounded feedback servo is approximate, not a physical-robot guarantee.
 Only project code is changed; the installed ManiSkill library is untouched.
@@ -44,6 +50,8 @@ def reward_components(distance_m, clearance_m, is_grasped, settings=REWARD_SETTI
     Lift credit is zero without grasp. Force/slip penalties and holding time are
     deliberately absent. Grasp detection uses Panda's existing contact predicate.
     """
+    # This is the task's score, not the critic's prediction. PPO tries to improve
+    # future scores, but this reward formula itself does not learn or change.
     weights = [settings[name] for name in ("reach_weight", "grasp_weight", "lift_weight")]
     if (not np.isfinite(weights).all() or min(weights) < 0
             or not np.isclose(sum(weights), 1.0)):
@@ -74,6 +82,7 @@ def reward_components(distance_m, clearance_m, is_grasped, settings=REWARD_SETTI
 
 def read_inputs(task, observation):
     """Read everything before another step; one row per environment, no images."""
+    # Called just after reset or step. Reads alone do not move the robot.
     mass_kg = task.cube.mass.reshape(-1, 1)
     gravity = torch.as_tensor(task.scene.px.get_config().gravity)
     inputs = dict(zip(INPUT_FIELDS, [
@@ -85,6 +94,7 @@ def read_inputs(task, observation):
     ]))
     # Cloning makes a snapshot that later physics steps cannot overwrite.
     inputs = {name: value.detach().clone().float() for name, value in inputs.items()}
+    # Keep names for us/controller, but give the neural network one ordered row.
     vector = torch.cat(list(inputs.values()), dim=1)
     if vector.shape != (1, 21) or not torch.isfinite(vector).all():
         raise ValueError("Expected 21 finite numerical inputs for one CPU environment")
@@ -108,6 +118,8 @@ def normal_forces(task, inputs):
 class LiftTask(PickCubeEnv):
     """Grasp and lift clear of the table; success terminates without a hold timer."""
 
+    # Inheritance: reuse PickCube's robot/physics, replacing selected task methods.
+    # There is no step() below because we use the inherited simulator step().
     def __init__(self, settings=None, control_mode="pd_joint_pos"):
         self.settings = {**REWARD_SETTINGS, **(settings or {})}
         super().__init__(
@@ -118,6 +130,7 @@ class LiftTask(PickCubeEnv):
         )
 
     def _initialize_episode(self, env_idx, options):
+        # ManiSkill calls this during reset(); train_ppo.py does not call it directly.
         super()._initialize_episode(env_idx, options)
         self.force_finger_target_m = None  # Reset the force servo's integral state.
         # PickCube resets upright on the table; its initial bottom gives table z.
@@ -143,6 +156,9 @@ class LiftTask(PickCubeEnv):
             raise RuntimeError("Physics mass/inertia update did not take effect")
 
     def evaluate(self):
+        # The simulator calls this on reset/step to describe the current task state.
+        # Here "evaluate" means check success/reward ingredients, not test a policy
+        # over many episodes. Returned fields become entries in the info dictionary.
         position = self.cube.pose.p
         # For a rotated cube, its vertical half-extent is h * sum(abs(R[z, :])).
         # This measures its LOWEST point, so tilting alone cannot fake clearance.
@@ -159,6 +175,7 @@ class LiftTask(PickCubeEnv):
         }
 
     def compute_dense_reward(self, obs, action, info):
+        # Inherited step() calls this and returns its result as reward to the trainer.
         return info["task_score"]
 
     def compute_normalized_dense_reward(self, obs, action, info):
@@ -177,6 +194,8 @@ def controller_action(task, inputs, action, settings):
     """
     if action.shape != (1, 7) or not torch.isfinite(action).all() or (action.abs() > 1).any():
         raise ValueError("Policy action must be finite with shape (1, 7) in [-1,1]")
+    # Prepare commands only. Physics advances later, in train_ppo.py's env.step().
+    # The first six actor outputs describe pose changes, not joint angles.
     current = inputs[INPUT_FIELDS[0]]
     target_position = current[:, :3] + settings["position_step_m"] * action[:, :3]
     target_position = target_position.clamp(
@@ -196,6 +215,8 @@ def controller_action(task, inputs, action, settings):
     target_root = arm.root_link.pose.inv() * target_world
     target_euler = matrix_to_euler_angles(quaternion_to_matrix(target_root.q), "XYZ")
 
+    # The seventh output is desired contact force. Feedback compares that request
+    # to measured force and adjusts the finger opening to reduce the difference.
     desired_force = settings["max_force_n"] * (action[:, 6] + 1) / 2
     measured = normal_forces(task, inputs)
     # Protect the more heavily loaded finger; the mimic gripper cannot command
@@ -231,4 +252,5 @@ def controller_action(task, inputs, action, settings):
         "measured_normal_forces_n": measured.clone(),
         "finger_position_target_m": finger_target.clone(),
     }
+    # command goes to the simulator; targets records what we asked it to achieve.
     return command, targets

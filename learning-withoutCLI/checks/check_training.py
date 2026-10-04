@@ -1,16 +1,23 @@
-"""Bounded integration checks: python learning/check_training.py.
+"""Optional integration checks: python learning-withoutCLI/checks/check_training.py.
 
 Synthetic checks verify math; scripted contact verifies the servo; a 32-step
 PPO run verifies plumbing. None of these is an evaluation of learned lifting.
+Unlike check_reward.py, this DOES perform a tiny training run and save models.
+It imports main() from train_ppo.py as train(), then calls it with small settings.
+Normal training never calls this file; use it when checking that the parts work.
 """
 
 import json
 from pathlib import Path
+import sys
 
 import numpy as np
 import torch
 from torch.distributions import TanhTransform, TransformedDistribution
 from mani_skill.utils.geometry.rotation_conversions import euler_angles_to_matrix, quaternion_to_matrix
+
+# Make the main scripts importable when running this file directly.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lift_task import INPUT_FIELDS, LiftTask, controller_action, normal_forces, read_inputs
 from ppo import Agent, generalized_advantages
@@ -171,7 +178,8 @@ def main():
     check_mass_and_controller()
     check_scripted_contact()
     run_dir = train({"updates": 2, "rollout_steps": 16, "episode_steps": 8,
-                     "minibatch_size": 8, "update_epochs": 2, "save_every_updates": 1})
+                     "minibatch_size": 8, "update_epochs": 2, "save_every_updates": 1,
+                     "run_root": str(Path(__file__).resolve().parents[2] / "runs" / "checks" / "training")})
     check_checkpoints(run_dir)
     print("All training integration checks passed. This is not policy-quality validation.")
 

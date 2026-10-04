@@ -1,7 +1,7 @@
 # Gripping and lifting PPO learning workspace
 
 Start with plain Python scripts as you learn robotic gripping and lifting.
-There is now a small runnable PyTorch PPO baseline in `learning/`.
+There is now a small runnable PyTorch PPO baseline in `learning-withoutCLI/`.
 **It has passed integration checks, not demonstrated learned lifting.**
 The existing simulator is ManiSkill 3.0.1 / SAPIEN 3.0.3 with Gymnasium and
 PyTorch. No weight estimator is implemented. The separate optional CLI scaffolding
@@ -18,10 +18,10 @@ Run these commands in Bash using the existing environment:
 ```bash
 cd /home/ubuntu/faliure
 source scripts/activate_grip.sh
-python learning/simulator_starter.py
+python learning-withoutCLI/examples/00_simulator_starter.py
 ```
 
-Open [learning/simulator_starter.py](learning/simulator_starter.py) and read it
+Open [learning-withoutCLI/examples/00_simulator_starter.py](learning-withoutCLI/examples/00_simulator_starter.py) and read it
 from top to bottom. It creates the installed **PickCube** simulation, resets it,
 saves a camera image, takes one random action and closes the simulator. Settings
 are directly in the file. There is no `argparse`, configuration file or
@@ -29,25 +29,25 @@ are directly in the file. There is no `argparse`, configuration file or
 environment settings; you do not need to learn CLI helpers to use this path.
 
 Expected output includes image shape `(128, 128, 3)`, a reward and a success flag.
-Open `checks/learning/first_frame.png` to see the scene immediately after reset;
+Open `runs/examples/first_frame.png` to see the scene immediately after reset;
 rerunning the script replaces this image. It does not open a live viewer.
 `Success: False` is normal after one random action. This is a simulator starter,
 not a trained policy or your future custom gripping task.
 
-Put your next plain `.py` files in `learning/` and run them the same way:
-`python learning/your_file.py` (replace `your_file.py` with your filename).
+Put your next plain `.py` files in `learning-withoutCLI/` and run them the same way:
+`python learning-withoutCLI/your_file.py` (replace `your_file.py` with your filename).
 For a first small change, edit `seed`, rerun and compare the saved image.
 You can build up your own code one step at a time without changing the CLI core.
 
 ### Inspect the lift reward
 
-With the same environment activated, run `python learning/check_reward.py`.
+With the same environment activated, run `python learning-withoutCLI/checks/check_reward.py`.
 It checks six synthetic conditions, then prints named reward components from an
 actual reset and one random action. The synthetic lifts are formula checks, not
 physically achieved or learned behaviour. The original `simulator_starter.py`
 still uses upstream PickCube's reward; this separate check uses `LiftTask`.
 
-The editable provisional settings are near the top of `learning/lift_task.py`:
+The editable provisional settings are near the top of `learning-withoutCLI/lift_task.py`:
 `proximity = exp(-distance / 0.10)` using TCP-to-cube-centre distance in metres;
 `reach = 1` when grasped, otherwise `proximity`; `grasp` is 0 or 1; and
 `lift = grasp * clamp(cube_bottom_clearance / 0.08, 0, 1)`.
@@ -69,7 +69,7 @@ the training script below uses the pose/force adapter with the same reward.
 ```bash
 cd /home/ubuntu/faliure
 source scripts/activate_grip.sh
-python learning/train_ppo.py
+python learning-withoutCLI/train_ppo.py
 ```
 
 Edit `SETTINGS` at the top of `train_ppo.py`. The provisional CPU defaults are
@@ -117,12 +117,12 @@ An interrupted optimizer update may be partial; continuation is not exact replay
 
 The implementation adapts the [official ManiSkill v3.0.1 PPO source](https://github.com/mani-skill/ManiSkill/blob/a4a4f9272ad64b1564035874b605ceb687b63ed8/examples/baselines/ppo/ppo.py)
 (commit `a4a4f9272ad64b1564035874b605ceb687b63ed8`), with its Apache-2.0 license
-preserved in `learning/MANISKILL_LICENSE`. See the [official baseline guide](https://maniskill.readthedocs.io/en/latest/user_guide/reinforcement_learning/baselines.html).
+preserved in `learning-withoutCLI/MANISKILL_LICENSE`. See the [official baseline guide](https://maniskill.readthedocs.io/en/latest/user_guide/reinforcement_learning/baselines.html).
 Local changes reduce the network and CPU budget, use tanh-transformed Gaussian
 actions with corrected log probabilities, and separate terminal and time-limit
 bootstrapping. The CLI, GPU wrappers and external logging dependencies are omitted.
 
-`python learning/check_training.py` runs targeted GAE/action/controller/mass tests,
+`python learning-withoutCLI/checks/check_training.py` runs targeted GAE/action/controller/mass tests,
 a scripted contact test, 32 PPO steps and a 16-step resume, including checkpoint
 action equivalence. Validation found finite parameter updates across all three
 masses. A scripted 2 N request produced about 1.67 N per finger, 6 N produced
@@ -134,19 +134,19 @@ mass adaptation or generalization. Force-efficiency penalties remain inactive.
 
 | Path | Purpose |
 |---|---|
-| `learning/` | Your standalone Python learning scripts; start here. |
-| `checks/learning/` | Images generated by the starter, ignored by Git. |
+| `learning-withoutCLI/` | Your standalone Python learning scripts; start here. |
+| `runs/examples/` | Images generated by the starter, ignored by Git. |
 | `scripts/` | Existing environment activation and optional simulator check helpers. |
 | `grip_support/` | Optional CLI scaffolding for later; separate from the learning scripts. |
 | `configs/` | Configuration for the optional CLI scaffolding. |
-| `checks/`, `runs/` | Generated check output, learning checkpoints and optional CLI runs. |
+| `runs/` | Generated images, inspection recordings, learning checkpoints and optional CLI runs. |
 | `.venv/`, `.maniskill/`, `.cache/` | Installed Python environment, simulator assets and caches. |
 | `requirements-lock.txt` | Existing dependency versions for recreating the environment. |
 
 ## Optional CLI helpers (later)
 
 Everything below documents the existing helpers. You can defer this section
-while working in `learning/`. Both `grip_support` and
+while working in `learning-withoutCLI/`. Both `grip_support` and
 `scripts/check_environment.py` are preserved; neither is called by the starter.
 
 Run these commands in Bash:
@@ -164,7 +164,7 @@ python -m grip_support train --config configs/grip.json --check-only
 `IMPORT OK` lines and `SETUP OK` with this workspace's Python path (exit 0).
 `sim-check` starts upstream **PickCube**, resets, renders and takes one sampled
 action. Expected output includes RGB shape `[128,128,3]`, `physx_cpu`, and
-`sapien_cpu` (exit 0). The image goes to `checks/grip-smoke/first_frame.png`.
+`sapien_cpu` (exit 0). The image goes to `runs/checks/grip-smoke/first_frame.png`.
 A false success flag is normal for a one-step check. This does not validate your
 future gripping environment or train/evaluate a policy.
 

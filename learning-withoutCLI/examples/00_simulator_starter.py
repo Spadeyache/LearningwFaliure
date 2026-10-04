@@ -11,7 +11,7 @@ import torch
 # Change settings here, then run this file again.
 seed = 0
 render_backend = "cpu"
-output_folder = Path(__file__).resolve().parent.parent / "checks" / "learning"
+output_folder = Path(__file__).resolve().parents[2] / "runs" / "examples"
 
 # 1. Create the simulator using the same settings as the working check script.
 env = gym.make(

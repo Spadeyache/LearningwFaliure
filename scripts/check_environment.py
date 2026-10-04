@@ -13,7 +13,7 @@ import mani_skill.envs  # Registers PickCube-v1.
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--render-backend", default="cpu")
-    parser.add_argument("--output-dir", type=Path, default=Path("checks"))
+    parser.add_argument("--output-dir", type=Path, default=Path("runs/checks"))
     args = parser.parse_args()
     env = gym.make(
         "PickCube-v1", num_envs=1, obs_mode="rgb",

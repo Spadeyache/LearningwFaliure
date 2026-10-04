@@ -1,6 +1,17 @@
-"""Check reward examples, then inspect reset and one random simulator step."""
+"""Optional reward check: python learning-withoutCLI/checks/check_reward.py.
+
+Run this to inspect example scores or check reward edits. train_ppo.py does not
+call this script. It checks the scoring rules, then one real simulator step;
+it does not create or train an actor/critic.
+"""
+
+from pathlib import Path
+import sys
 
 import torch
+
+# Make the main scripts importable when running this file directly.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lift_task import LiftTask, REWARD_SETTINGS, reward_components
 
