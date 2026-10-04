@@ -1,7 +1,7 @@
-"""CPU lift reward, agreed observations, and an UNVALIDATED controller draft.
+"""CPU lift reward, agreed observations, and a simple pose/force adapter.
 
-The reward check uses the existing joint-position controller, with no training.
-The pose/force adapter and optional mass override remain drafts for later work.
+The reward check uses joint positions; train_ppo.py uses the pose/force adapter.
+Its bounded feedback servo is approximate, not a physical-robot guarantee.
 Only project code is changed; the installed ManiSkill library is untouched.
 """
 
@@ -119,7 +119,7 @@ class LiftTask(PickCubeEnv):
 
     def _initialize_episode(self, env_idx, options):
         super()._initialize_episode(env_idx, options)
-        self.requested_force_n = 0.0
+        self.force_finger_target_m = None  # Reset the force servo's integral state.
         # PickCube resets upright on the table; its initial bottom gives table z.
         self.table_surface_z = self.cube.pose.p[:, 2].clone() - self.cube_half_size
         # The inherited goal is only a marker. Our reward never uses its position.
@@ -127,8 +127,7 @@ class LiftTask(PickCubeEnv):
             torch.tensor([[0.0, 0.0, float(self.table_surface_z.item())
                            + self.cube_half_size + self.settings["lift_clearance_m"]]])
         ))
-        # Optional earlier mass-study draft, inactive in the reward check.
-        # No mass range is chosen and ordinary resets retain the simulator mass.
+        # Training passes an explicit mass. The reward check keeps the default.
         if "mass_kg" not in options:
             return
         mass = float(options["mass_kg"])
@@ -168,7 +167,7 @@ class LiftTask(PickCubeEnv):
 
 
 def controller_action(task, inputs, action, settings):
-    """UNVALIDATED DRAFT, unused by check_reward.py; requires pd_ee_pose mode.
+    """Requires pd_ee_pose mode; unused by the joint-position reward check.
 
     Map a bounded policy action to an absolute pose and grip servo command.
 
@@ -192,6 +191,8 @@ def controller_action(task, inputs, action, settings):
     # pd_ee_pose expects an absolute pose in the arm ROOT frame, with XYZ Euler
     # angles (not quaternion components). Use the actual root transform.
     arm = task.agent.controller.controllers["arm"]
+    if arm.config.use_delta or arm.config.normalize_action:
+        raise ValueError("The adapter requires absolute, unnormalized pd_ee_pose")
     target_root = arm.root_link.pose.inv() * target_world
     target_euler = matrix_to_euler_angles(quaternion_to_matrix(target_root.q), "XYZ")
 
@@ -204,10 +205,14 @@ def controller_action(task, inputs, action, settings):
         -settings["finger_step_m"], settings["finger_step_m"]
     )
     gripper = task.agent.controller.controllers["gripper"]
-    current_opening = gripper.qpos.mean(1)
+    if task.force_finger_target_m is None:
+        task.force_finger_target_m = gripper.qpos.mean(1).clone()
     # Zero requested grip releases the cube, even when both measured forces are 0.
     change = torch.where(desired_force < 0.05, settings["finger_step_m"], change)
-    finger_target = (current_opening + change).clamp(-0.002, 0.04)
+    # Integrate force error into the target, with saturation preventing windup.
+    # Finger position is used inside this controller, never as a policy input.
+    finger_target = (task.force_finger_target_m + change).clamp(-0.002, 0.04)
+    task.force_finger_target_m = finger_target.clone()
     # Installed Panda mimic controller normalizes [-0.01, 0.04] metres to [-1,1].
     low, high = float(gripper.config.lower), float(gripper.config.upper)
     grip_action = 2 * (finger_target - low) / (high - low) - 1
@@ -215,7 +220,11 @@ def controller_action(task, inputs, action, settings):
         "arm": torch.cat([target_root.p, target_euler], dim=1),
         "gripper": grip_action[:, None],
     })
-    task.requested_force_n = float(desired_force.item())
+    low_bound = torch.as_tensor(task.action_space.low)
+    high_bound = torch.as_tensor(task.action_space.high)
+    if (not torch.isfinite(command).all() or (command < low_bound).any()
+            or (command > high_bound).any()):
+        raise ValueError("Pose/force adapter produced an invalid simulator command")
     targets = {
         "tcp_pose_world_m_wxyz": target_world.raw_pose.clone(),
         "grip_force_per_finger_n": desired_force.clone(),

@@ -38,7 +38,7 @@ def main():
     print("Synthetic reward checks passed. These are not learned behaviours.")
 
     # Use the familiar joint-position controller only for this one-step check.
-    # The draft pose/force adapter is not exercised or validated here.
+    # The pose/force adapter is checked separately by check_training.py.
     env = LiftTask()
     try:
         observation, info = env.reset(seed=0)

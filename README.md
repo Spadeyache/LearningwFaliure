@@ -1,10 +1,11 @@
 # Gripping and lifting PPO learning workspace
 
 Start with plain Python scripts as you learn robotic gripping and lifting.
-**No gripping policy, PPO trainer, or weight estimator has been implemented.**
+There is now a small runnable PyTorch PPO baseline in `learning/`.
+**It has passed integration checks, not demonstrated learned lifting.**
 The existing simulator is ManiSkill 3.0.1 / SAPIEN 3.0.3 with Gymnasium and
-PyTorch. A PPO implementation has not been selected; `framework` is intentionally
-`null`. You can learn the simulator before choosing a training framework.
+PyTorch. No weight estimator is implemented. The separate optional CLI scaffolding
+is still incomplete; its `framework: null` setting is not used by these scripts.
 
 The previous failure-detection pipeline, demonstrations, datasets, predictor
 checkpoints, reports, figures, tests and archived documentation have been deleted
@@ -60,9 +61,74 @@ Grasp uses ManiSkill Panda's existing two-finger contact test (at least 0.5 N
 per finger and force direction within 85 degrees of its opening axis). There is
 no hold-duration requirement, force penalty or slip penalty yet. Excessive-force
 tuning is deferred. The inherited random goal is not part of this reward or
-success condition. `lift_task.py` also retains an **unvalidated** pose/force
-controller and optional mass-override draft; this check does not use them.
-PPO, network choices, mass sweeps and training remain for later discussion.
+success condition. The reward check uses a random joint-position action;
+the training script below uses the pose/force adapter with the same reward.
+
+### Run and read the PPO baseline
+
+```bash
+cd /home/ubuntu/faliure
+source scripts/activate_grip.sh
+python learning/train_ppo.py
+```
+
+Edit `SETTINGS` at the top of `train_ppo.py`. The provisional CPU defaults are
+**8 updates × 128 steps = 1,024 steps**, at most 100 steps per episode, cycling
+actual cube masses **0.040, 0.064, 0.100 kg** at reset. Inertia scales with mass;
+shape and friction stay fixed. These are small engineering starting settings,
+not a validated learning budget or a tuned mass study. No new packages are needed.
+
+Read the code first, using the official docs alongside it:
+
+1. `lift_task.py`: 21 inputs, physical mass, agreed reward, pose/force adapter.
+2. `ppo.py`, `Agent`: separate actor and critic, each with two 64-unit tanh layers.
+3. `train_ppo.py`, `main`: collect transitions and reset episodes with new masses.
+4. `ppo.py`, `generalized_advantages` and `update_ppo`: advantages and Adam updates.
+5. `train_ppo.py`, `save_checkpoint` and `load_checkpoint`: saving and restoring.
+
+The actor and critic see only TCP pose (7), cube pose (7), true weight in newtons
+(1), and separate world finger–cube force vectors (3 + 3), collected at one
+simulation state. Fixed scaling divides positions by 0.3 m, weight by 1 N, forces
+by 10 N, and leaves `wxyz` quaternions unchanged. No RGB, joint positions, gripper
+width or hidden goal is added. Velocities/history are also absent, so this small
+feed-forward policy has only a partial view of the dynamics.
+
+The bounded seven-value action requests world TCP position/rotation increments
+(up to 1.5 cm and 0.1 rad per axis) and **0–8 N normal contact force per finger**.
+The adapter creates an absolute target TCP pose, clips its position to the visible
+workspace bounds, transforms it to the Panda root frame, and uses ManiSkill's
+absolute pose/IK controller. Targets may not be fully reached within one step.
+A feedback servo integrates force error into a bounded finger-position target;
+it closes with no contact and releases near zero demand. It uses the larger of
+the two projected normal forces to protect the more loaded finger. This is
+approximate force regulation, not an actuator-force-limit command or a guarantee
+of equal force on both fingers. Physical robot transfer has not been tested.
+
+Each run has its own `runs/learning/<run>/` folder with settings, episode/update
+metrics, checkpoints **every 2 updates (256 steps)**, and `final.pt`.
+Ctrl+C saves `interrupted.pt`. Checkpoints include actor, critic, Adam state,
+counters, fixed scaling, feature/action/reward metadata and the PyTorch RNG state.
+To continue, set `resume_from` to a checkpoint path and raise `updates` above its
+completed count; all other dynamics/model/optimizer settings must match. Resume
+creates a new run and fresh episode, discarding the old partial episode/rollout.
+An interrupted optimizer update may be partial; continuation is not exact replay.
+`load_checkpoint(path)` also returns a model for
+`model.get_action(inputs, deterministic=True)`.
+
+The implementation adapts the [official ManiSkill v3.0.1 PPO source](https://github.com/mani-skill/ManiSkill/blob/a4a4f9272ad64b1564035874b605ceb687b63ed8/examples/baselines/ppo/ppo.py)
+(commit `a4a4f9272ad64b1564035874b605ceb687b63ed8`), with its Apache-2.0 license
+preserved in `learning/MANISKILL_LICENSE`. See the [official baseline guide](https://maniskill.readthedocs.io/en/latest/user_guide/reinforcement_learning/baselines.html).
+Local changes reduce the network and CPU budget, use tanh-transformed Gaussian
+actions with corrected log probabilities, and separate terminal and time-limit
+bootstrapping. The CLI, GPU wrappers and external logging dependencies are omitted.
+
+`python learning/check_training.py` runs targeted GAE/action/controller/mass tests,
+a scripted contact test, 32 PPO steps and a 16-step resume, including checkpoint
+action equivalence. Validation found finite parameter updates across all three
+masses. A scripted 2 N request produced about 1.67 N per finger, 6 N produced
+about 5.97 N, and release returned contact force to zero. This verifies controller
+response and training plumbing; it is not evidence of a learned grasp, lift,
+mass adaptation or generalization. Force-efficiency penalties remain inactive.
 
 ## Folder purposes
 
@@ -73,7 +139,7 @@ PPO, network choices, mass sweeps and training remain for later discussion.
 | `scripts/` | Existing environment activation and optional simulator check helpers. |
 | `grip_support/` | Optional CLI scaffolding for later; separate from the learning scripts. |
 | `configs/` | Configuration for the optional CLI scaffolding. |
-| `checks/`, `runs/` | Generated check output and future CLI run artifacts. |
+| `checks/`, `runs/` | Generated check output, learning checkpoints and optional CLI runs. |
 | `.venv/`, `.maniskill/`, `.cache/` | Installed Python environment, simulator assets and caches. |
 | `requirements-lock.txt` | Existing dependency versions for recreating the environment. |
 
