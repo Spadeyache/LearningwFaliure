@@ -1,256 +1,134 @@
-"""CPU lift reward, agreed observations, and a simple pose/force adapter.
+"""THE ENVIRONMENT: original PickCube, plus true weight and floating goals.
 
-THE ROBOT SIDE: train_ppo.py creates a LiftTask and calls the helpers here.
-read_inputs() answers "what is happening now?" using the agreed 21 measurements.
-controller_action() turns "what the actor wants" into simulator commands.
-LiftTask supplies reset behaviour, success detection and reward during env.step().
-This file defines the task; it does not train a neural network.
-
-The reward check uses joint positions; train_ppo.py uses the pose/force adapter.
-Its bounded feedback servo is approximate, not a physical-robot guarantee.
-Only project code is changed; the installed ManiSkill library is untouched.
+Carry the cube to the green target. Keep ManiSkill's robot, native four-action
+controller, reward and success condition. Add real mass variation and one input.
 """
-
 import numpy as np
 import torch
 from mani_skill.envs.tasks.tabletop.pick_cube import PickCubeEnv
-from mani_skill.utils.geometry.rotation_conversions import (
-    euler_angles_to_matrix, matrix_to_euler_angles, matrix_to_quaternion,
-    quaternion_multiply, quaternion_to_matrix,
-)
+from mani_skill.utils.common import flatten_state_dict
+from mani_skill.utils.geometry.rotation_conversions import quaternion_to_matrix
+from mani_skill.utils.registration import register_env
 from mani_skill.utils.structs.pose import Pose
 
-
-INPUT_FIELDS = [
-    "gripper_tcp_pose_world_m_wxyz", "object_pose_world_m_wxyz",
-    "object_weight_n", "left_finger_cube_force_world_n",
-    "right_finger_cube_force_world_n",
-]
-INPUT_SIZES = [7, 7, 1, 3, 3]
-ACTION_DESCRIPTION = (
-    "7 values in [-1,1]: world xyz increments, world XYZ Euler rotation "
-    "increments, then per-finger normal contact force mapped to [0,max_force_n]. "
-    "The adapter produces an absolute world TCP pose and finger position target."
-)
-
-# Editable starting choices, not universally optimal reward settings.
-REWARD_SETTINGS = {
-    "reach_scale_m": 0.10,  # At 10 cm, proximity is exp(-1), about 0.37.
-    "lift_clearance_m": 0.08,  # Cube's lowest point must be 8 cm above the table.
-    "reach_weight": 0.20,  # Some guidance before contact; most credit is for the task.
-    "grasp_weight": 0.30,
-    "lift_weight": 0.50,
-}
+ENV_ID = "WeightedPickCube-v1"
+HORIZON = 50
+ORIGIN = "maniskill_weighted_pick_cube"
+ENV_SETTINGS = {"masses_kg": [0.040, 0.064, 0.100], "goal_clearance_m": [0.10, 0.30]}
+INPUT_FIELDS = ["joint_positions", "joint_velocities", "is_grasped", "tcp_pose_world_m_wxyz",
+                "goal_position_world_m", "cube_pose_world_m_wxyz", "tcp_to_cube_world_m",
+                "cube_to_goal_world_m", "object_weight_n"]
+INPUT_SIZES = [9, 9, 1, 7, 3, 7, 3, 3, 1]
+ACTION_DESCRIPTION = "4 native pd_ee_delta_pos actions: root-frame XYZ increments and finger opening (-1 closed, +1 open)"
 
 
-def reward_components(distance_m, clearance_m, is_grasped, settings=REWARD_SETTINGS):
-    """One bounded score from TCP-to-object distance, cube clearance and grasp.
+def reward_components(distance, goal_distance, grasped, joint_speed, at_goal, static):
+    """Expose the ORIGINAL normalized PickCube score for inspection."""
+    reach = (1 - torch.tanh(5 * distance)) / 5
+    grasp = grasped.float() / 5
+    move = (1 - torch.tanh(5 * goal_distance)) * grasped / 5
+    still = (1 - torch.tanh(5 * joint_speed)) * at_goal / 5
+    bonus = torch.where(at_goal & static, 1 - reach - grasp - move - still, 0)
+    return dict(reach_score=reach, grasp_score=grasp, goal_score=move, static_score=still,
+                success_bonus=bonus, task_score=reach + grasp + move + still + bonus)
 
-    A confirmed grasp completes reaching, even when TCP and cube centres differ.
-    Lift credit is zero without grasp. Force/slip penalties and holding time are
-    deliberately absent. Grasp detection uses Panda's existing contact predicate.
-    """
-    # This is the task's score, not the critic's prediction. PPO tries to improve
-    # future scores, but this reward formula itself does not learn or change.
-    weights = [settings[name] for name in ("reach_weight", "grasp_weight", "lift_weight")]
-    if (not np.isfinite(weights).all() or min(weights) < 0
-            or not np.isclose(sum(weights), 1.0)):
-        raise ValueError("Reward weights must be nonnegative, finite and sum to 1")
-    for name in ("reach_scale_m", "lift_clearance_m"):
-        if not np.isfinite(settings[name]) or settings[name] <= 0:
-            raise ValueError(f"{name} must be positive and finite")
-    if not torch.isfinite(distance_m).all() or not torch.isfinite(clearance_m).all():
-        raise ValueError("Distance and clearance must be finite")
-    proximity = torch.exp(-distance_m.clamp_min(0) / settings["reach_scale_m"])
-    grasp = is_grasped.float()
-    reach = torch.where(is_grasped, torch.ones_like(proximity), proximity)
-    lift = grasp * (clearance_m / settings["lift_clearance_m"]).clamp(0, 1)
-    reach_score = settings["reach_weight"] * reach
-    grasp_score = settings["grasp_weight"] * grasp
-    lift_score = settings["lift_weight"] * lift
-    return {
-        "distance_m": distance_m,
-        "clearance_m": clearance_m,
-        "proximity": proximity,
-        "reach_score": reach_score,
-        "grasp_score": grasp_score,
-        "lift_score": lift_score,
-        "task_score": (reach_score + grasp_score + lift_score).clamp(0, 1),
-        "success": is_grasped & (clearance_m >= settings["lift_clearance_m"]),
-    }
+
+@register_env(ENV_ID, max_episode_steps=HORIZON)
+class LiftTask(PickCubeEnv):
+    def __init__(self, *args, masses_kg=None, goal_clearance_m=None, **kwargs):
+        self.masses_kg = tuple(masses_kg if masses_kg is not None else ENV_SETTINGS["masses_kg"])
+        self.goal_clearance_m = tuple(goal_clearance_m if goal_clearance_m is not None else ENV_SETTINGS["goal_clearance_m"])
+        if not self.masses_kg or any(not np.isfinite(m) or m <= 0 for m in self.masses_kg):
+            raise ValueError("masses_kg must contain positive finite masses")
+        if (len(self.goal_clearance_m) != 2 or not np.isfinite(self.goal_clearance_m).all()
+                or self.goal_clearance_m[0] <= .025 or self.goal_clearance_m[1] < self.goal_clearance_m[0]):
+            raise ValueError("Choose an ordered floating-goal clearance range above the 2.5 cm goal tolerance")
+        kwargs.setdefault("num_envs", 1)
+        kwargs.setdefault("obs_mode", "state")
+        kwargs.setdefault("control_mode", "pd_ee_delta_pos")
+        kwargs.setdefault("sim_backend", "physx_cpu")
+        kwargs.setdefault("render_backend", "cpu")
+        kwargs.setdefault("reward_mode", "normalized_dense")
+        kwargs.setdefault("sensor_configs", {"shader_pack": "minimal"})
+        kwargs.setdefault("human_render_camera_configs", {"shader_pack": "minimal"})
+        if kwargs["control_mode"] != "pd_ee_delta_pos" or kwargs["reward_mode"] != "normalized_dense":
+            raise ValueError("Use the native four-action controller and normalized dense reward")
+        self._cpu_episode = 0
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _set_mass(body, mass):
+        inertia = np.array(body.inertia, copy=True) * float(mass) / body.mass
+        body.set_mass(float(mass))
+        body.set_inertia(inertia)
+        if not np.isclose(body.mass, mass) or not np.allclose(body.inertia, inertia):
+            raise RuntimeError("Physical mass/inertia assignment failed")
+
+    def _load_scene(self, options):
+        super()._load_scene(options)
+        # GPU PhysX requires mass assignment BEFORE initialization. Each parallel
+        # robot has one mass, retained across resets. Shape/friction stay fixed.
+        for index, body in enumerate(self.cube._bodies):
+            self._set_mass(body, self.masses_kg[index % len(self.masses_kg)])
+
+    def _initialize_episode(self, env_idx, options):
+        # CPU inspection can select a different physical mass each attempt.
+        if not self.gpu_sim_enabled and "mass_kg" not in options:
+            options = {**options, "mass_kg": self.masses_kg[self._cpu_episode % len(self.masses_kg)]}
+            self._cpu_episode += 1
+        if "mass_kg" in options:
+            mass = float(options["mass_kg"])
+            if not np.isfinite(mass) or mass <= 0:
+                raise ValueError("mass_kg must be positive and finite")
+            if self.gpu_sim_enabled:
+                raise ValueError("For GPU simulation assign masses_kg when constructing the scene")
+            for body in self.cube._bodies:
+                self._set_mass(body, mass)
+        super()._initialize_episode(env_idx, options)
+        goal = self.goal_site.pose.p[env_idx].clone()
+        low, high = self.goal_clearance_m
+        # Random XY from PickCube; Z is a floating target for the CUBE centre.
+        # This range expresses bottom clearance for an upright cube.
+        goal[:, 2] = self.cube_half_size + low + (high - low) * torch.rand(len(env_idx), device=self.device)
+        self.goal_site.set_pose(Pose.create_from_pq(goal))
+
+    def _get_obs_extra(self, info):
+        measurements = super()._get_obs_extra(info)
+        gravity = torch.as_tensor(self.scene.px.get_config().gravity, device=self.device).norm()
+        # Append LAST so the existing 42 entries retain exactly their order.
+        measurements["object_weight_n"] = self.cube.mass.to(self.device).reshape(-1, 1) * gravity
+        return measurements
+
+    def evaluate(self):
+        info = super().evaluate()  # Original cube-at-goal + stationary-arm success.
+        distance = (self.cube.pose.p - self.agent.tcp_pose.p).norm(dim=-1)
+        goal_distance = (self.cube.pose.p - self.goal_site.pose.p).norm(dim=-1)
+        speed = self.agent.robot.get_qvel()[..., :-2].norm(dim=-1)
+        rotation = quaternion_to_matrix(self.cube.pose.q)
+        clearance = self.cube.pose.p[:, 2] - self.cube_half_size * rotation[:, 2].abs().sum(-1)
+        return dict(info, distance_m=distance, goal_distance_m=goal_distance, clearance_m=clearance,
+                    held_goal_success=info["success"] & info["is_grasped"],
+                    **reward_components(distance, goal_distance, info["is_grasped"], speed,
+                                        info["is_obj_placed"], info["is_robot_static"]))
 
 
 def read_inputs(task, observation):
-    """Read everything before another step; one row per environment, no images."""
-    # Called just after reset or step. Reads alone do not move the robot.
-    mass_kg = task.cube.mass.reshape(-1, 1)
-    gravity = torch.as_tensor(task.scene.px.get_config().gravity)
-    inputs = dict(zip(INPUT_FIELDS, [
-        observation["extra"]["tcp_pose"],
-        observation["extra"]["obj_pose"],
-        mass_kg * torch.linalg.vector_norm(gravity),
-        task.scene.get_pairwise_contact_forces(task.agent.finger1_link, task.cube),
-        task.scene.get_pairwise_contact_forces(task.agent.finger2_link, task.cube),
-    ]))
-    # Cloning makes a snapshot that later physics steps cannot overwrite.
-    inputs = {name: value.detach().clone().float() for name, value in inputs.items()}
-    # Keep names for us/controller, but give the neural network one ordered row.
-    vector = torch.cat(list(inputs.values()), dim=1)
-    if vector.shape != (1, 21) or not torch.isfinite(vector).all():
-        raise ValueError("Expected 21 finite numerical inputs for one CPU environment")
+    """One row of 43 state measurements per robot: original 42 plus true weight."""
+    vector = flatten_state_dict(observation, use_torch=True, device=task.device) if isinstance(observation, dict) else observation
+    vector = vector.detach().clone().float()
+    if vector.shape != (task.num_envs, 43) or not torch.isfinite(vector).all():
+        raise ValueError("Expected 43 finite measurements per robot")
+    inputs, start = {}, 0
+    for name, size in zip(INPUT_FIELDS, INPUT_SIZES):
+        inputs[name] = vector[:, start:start + size]
+        start += size
     return inputs, vector
 
 
-def normal_forces(task, inputs):
-    """Compressive force on each finger, projected on its outward opening axis.
-
-    These are the same axes used by installed Panda.is_grasping(). The world
-    vectors are forces ON the fingers, so compression pushes each finger outward.
-    Opposing vectors must never be added together to measure grip strength.
-    """
-    left_axis = task.agent.finger1_link.pose.to_transformation_matrix()[:, :3, 1]
-    right_axis = -task.agent.finger2_link.pose.to_transformation_matrix()[:, :3, 1]
-    left = (inputs[INPUT_FIELDS[3]] * left_axis).sum(1).clamp_min(0)
-    right = (inputs[INPUT_FIELDS[4]] * right_axis).sum(1).clamp_min(0)
-    return torch.stack([left, right], dim=1)
-
-
-class LiftTask(PickCubeEnv):
-    """Grasp and lift clear of the table; success terminates without a hold timer."""
-
-    # Inheritance: reuse PickCube's robot/physics, replacing selected task methods.
-    # There is no step() below because we use the inherited simulator step().
-    def __init__(self, settings=None, control_mode="pd_joint_pos"):
-        self.settings = {**REWARD_SETTINGS, **(settings or {})}
-        super().__init__(
-            num_envs=1, obs_mode="state_dict", control_mode=control_mode,
-            sim_backend="physx_cpu", render_backend="cpu", reward_mode="dense",
-            sensor_configs={"shader_pack": "minimal"},
-            human_render_camera_configs={"shader_pack": "minimal"},
-        )
-
-    def _initialize_episode(self, env_idx, options):
-        # ManiSkill calls this during reset(); train_ppo.py does not call it directly.
-        super()._initialize_episode(env_idx, options)
-        self.force_finger_target_m = None  # Reset the force servo's integral state.
-        # PickCube resets upright on the table; its initial bottom gives table z.
-        self.table_surface_z = self.cube.pose.p[:, 2].clone() - self.cube_half_size
-        # The inherited goal is only a marker. Our reward never uses its position.
-        self.goal_site.set_pose(Pose.create_from_pq(
-            torch.tensor([[0.0, 0.0, float(self.table_surface_z.item())
-                           + self.cube_half_size + self.settings["lift_clearance_m"]]])
-        ))
-        # Training passes an explicit mass. The reward check keeps the default.
-        if "mass_kg" not in options:
-            return
-        mass = float(options["mass_kg"])
-        if not np.isfinite(mass) or mass <= 0:
-            raise ValueError("Mass must be positive and finite")
-        # Actor exposes mass publicly, but inertia requires its SAPIEN body.
-        # Scale existing inertia by the mass ratio: same shape/density distribution.
-        body = self.cube._bodies[0]
-        inertia = np.array(body.inertia, copy=True) * (mass / body.mass)
-        body.set_mass(mass)
-        body.set_inertia(inertia)
-        if not np.isclose(body.mass, mass) or not np.allclose(body.inertia, inertia):
-            raise RuntimeError("Physics mass/inertia update did not take effect")
-
-    def evaluate(self):
-        # The simulator calls this on reset/step to describe the current task state.
-        # Here "evaluate" means check success/reward ingredients, not test a policy
-        # over many episodes. Returned fields become entries in the info dictionary.
-        position = self.cube.pose.p
-        # For a rotated cube, its vertical half-extent is h * sum(abs(R[z, :])).
-        # This measures its LOWEST point, so tilting alone cannot fake clearance.
-        rotation = quaternion_to_matrix(self.cube.pose.q)
-        bottom_z = position[:, 2] - self.cube_half_size * rotation[:, 2, :].abs().sum(1)
-        distance = torch.linalg.vector_norm(position - self.agent.tcp_pose.p, dim=1)
-        grasped = self.agent.is_grasping(self.cube)
-        components = reward_components(
-            distance, bottom_z - self.table_surface_z, grasped, self.settings
-        )
-        return {
-            "is_grasped": grasped,
-            **components,
-        }
-
-    def compute_dense_reward(self, obs, action, info):
-        # Inherited step() calls this and returns its result as reward to the trainer.
-        return info["task_score"]
-
-    def compute_normalized_dense_reward(self, obs, action, info):
-        # Already normalized; do not inherit PickCube's division by five.
-        return self.compute_dense_reward(obs, action, info)
-
-
-def controller_action(task, inputs, action, settings):
-    """Requires pd_ee_pose mode; unused by the joint-position reward check.
-
-    Map a bounded policy action to an absolute pose and grip servo command.
-
-    The force servo runs once per control step. It changes a position target,
-    not the actuator force limit. It is an approximate feedback controller, not
-    a guarantee of exact contact force or a validated physical-robot controller.
-    """
-    if action.shape != (1, 7) or not torch.isfinite(action).all() or (action.abs() > 1).any():
-        raise ValueError("Policy action must be finite with shape (1, 7) in [-1,1]")
-    # Prepare commands only. Physics advances later, in train_ppo.py's env.step().
-    # The first six actor outputs describe pose changes, not joint angles.
-    current = inputs[INPUT_FIELDS[0]]
-    target_position = current[:, :3] + settings["position_step_m"] * action[:, :3]
-    target_position = target_position.clamp(
-        torch.tensor(settings["workspace_low_m"]), torch.tensor(settings["workspace_high_m"])
-    )
-    delta_q = matrix_to_quaternion(euler_angles_to_matrix(
-        settings["rotation_step_rad"] * action[:, 3:6], "XYZ"
-    ))
-    target_q = quaternion_multiply(delta_q, current[:, 3:])
-    target_world = Pose.create_from_pq(target_position, target_q)
-
-    # pd_ee_pose expects an absolute pose in the arm ROOT frame, with XYZ Euler
-    # angles (not quaternion components). Use the actual root transform.
-    arm = task.agent.controller.controllers["arm"]
-    if arm.config.use_delta or arm.config.normalize_action:
-        raise ValueError("The adapter requires absolute, unnormalized pd_ee_pose")
-    target_root = arm.root_link.pose.inv() * target_world
-    target_euler = matrix_to_euler_angles(quaternion_to_matrix(target_root.q), "XYZ")
-
-    # The seventh output is desired contact force. Feedback compares that request
-    # to measured force and adjusts the finger opening to reduce the difference.
-    desired_force = settings["max_force_n"] * (action[:, 6] + 1) / 2
-    measured = normal_forces(task, inputs)
-    # Protect the more heavily loaded finger; the mimic gripper cannot command
-    # the two fingers independently. Zero contact + positive demand closes it.
-    error = desired_force - measured.max(dim=1).values
-    change = (-settings["force_gain_m_per_n"] * error).clamp(
-        -settings["finger_step_m"], settings["finger_step_m"]
-    )
-    gripper = task.agent.controller.controllers["gripper"]
-    if task.force_finger_target_m is None:
-        task.force_finger_target_m = gripper.qpos.mean(1).clone()
-    # Zero requested grip releases the cube, even when both measured forces are 0.
-    change = torch.where(desired_force < 0.05, settings["finger_step_m"], change)
-    # Integrate force error into the target, with saturation preventing windup.
-    # Finger position is used inside this controller, never as a policy input.
-    finger_target = (task.force_finger_target_m + change).clamp(-0.002, 0.04)
-    task.force_finger_target_m = finger_target.clone()
-    # Installed Panda mimic controller normalizes [-0.01, 0.04] metres to [-1,1].
-    low, high = float(gripper.config.lower), float(gripper.config.upper)
-    grip_action = 2 * (finger_target - low) / (high - low) - 1
-    command = task.agent.controller.from_action_dict({
-        "arm": torch.cat([target_root.p, target_euler], dim=1),
-        "gripper": grip_action[:, None],
-    })
-    low_bound = torch.as_tensor(task.action_space.low)
-    high_bound = torch.as_tensor(task.action_space.high)
-    if (not torch.isfinite(command).all() or (command < low_bound).any()
-            or (command > high_bound).any()):
-        raise ValueError("Pose/force adapter produced an invalid simulator command")
-    targets = {
-        "tcp_pose_world_m_wxyz": target_world.raw_pose.clone(),
-        "grip_force_per_finger_n": desired_force.clone(),
-        "measured_normal_forces_n": measured.clone(),
-        "finger_position_target_m": finger_target.clone(),
-    }
-    # command goes to the simulator; targets records what we asked it to achieve.
-    return command, targets
+def normal_forces(task):
+    """Log contact for us; raw forces are not additional policy inputs."""
+    left = task.scene.get_pairwise_contact_forces(task.agent.finger1_link, task.cube)
+    right = task.scene.get_pairwise_contact_forces(task.agent.finger2_link, task.cube)
+    la = task.agent.finger1_link.pose.to_transformation_matrix()[:, :3, 1]
+    ra = -task.agent.finger2_link.pose.to_transformation_matrix()[:, :3, 1]
+    return torch.stack([(left * la).sum(-1).clamp_min(0), (right * ra).sum(-1).clamp_min(0)], dim=-1)

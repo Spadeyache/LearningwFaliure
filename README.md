@@ -1,134 +1,55 @@
 # Gripping and lifting PPO learning workspace
 
-Start with plain Python scripts as you learn robotic gripping and lifting.
-There is now a small runnable PyTorch PPO baseline in `learning-withoutCLI/`.
-**It has passed integration checks, not demonstrated learned lifting.**
-The existing simulator is ManiSkill 3.0.1 / SAPIEN 3.0.3 with Gymnasium and
-PyTorch. No weight estimator is implemented. The separate optional CLI scaffolding
-is still incomplete; its `framework: null` setting is not used by these scripts.
+The main scripts now follow ManiSkill's working PickCube PPO baseline, with a
+floating cube goal and variable physical mass. They use 43 state inputs (original
+42 plus true object weight), four native XYZ/finger-opening actions, and the
+original goal-reaching reward and PPO learning loop.
 
-The previous failure-detection pipeline, demonstrations, datasets, predictor
-checkpoints, reports, figures, tests and archived documentation have been deleted
-at your request. The simulator smoke check and installed dependencies are retained.
+Read [the current setup and experiment guide](learning-withoutCLI/README.md).
+Short CPU/GPU integration runs passed; learned weight adaptation is not yet
+established, and the full default training run has not been started.
 
-## Start here: plain Python
+## Train and inspect
 
-Run these commands in Bash using the existing environment:
-
-```bash
-cd /home/ubuntu/faliure
-source scripts/activate_grip.sh
-python learning-withoutCLI/examples/00_simulator_starter.py
-```
-
-Open [learning-withoutCLI/examples/00_simulator_starter.py](learning-withoutCLI/examples/00_simulator_starter.py) and read it
-from top to bottom. It creates the installed **PickCube** simulation, resets it,
-saves a camera image, takes one random action and closes the simulator. Settings
-are directly in the file. There is no `argparse`, configuration file or
-`grip_support` import. The activation script only prepares Python and simulator
-environment settings; you do not need to learn CLI helpers to use this path.
-
-Expected output includes image shape `(128, 128, 3)`, a reward and a success flag.
-Open `runs/examples/first_frame.png` to see the scene immediately after reset;
-rerunning the script replaces this image. It does not open a live viewer.
-`Success: False` is normal after one random action. This is a simulator starter,
-not a trained policy or your future custom gripping task.
-
-Put your next plain `.py` files in `learning-withoutCLI/` and run them the same way:
-`python learning-withoutCLI/your_file.py` (replace `your_file.py` with your filename).
-For a first small change, edit `seed`, rerun and compare the saved image.
-You can build up your own code one step at a time without changing the CLI core.
-
-### Inspect the lift reward
-
-With the same environment activated, run `python learning-withoutCLI/checks/check_reward.py`.
-It checks six synthetic conditions, then prints named reward components from an
-actual reset and one random action. The synthetic lifts are formula checks, not
-physically achieved or learned behaviour. The original `simulator_starter.py`
-still uses upstream PickCube's reward; this separate check uses `LiftTask`.
-
-The editable provisional settings are near the top of `learning-withoutCLI/lift_task.py`:
-`proximity = exp(-distance / 0.10)` using TCP-to-cube-centre distance in metres;
-`reach = 1` when grasped, otherwise `proximity`; `grasp` is 0 or 1; and
-`lift = grasp * clamp(cube_bottom_clearance / 0.08, 0, 1)`.
-The single task score is **0.2 × reach + 0.3 × grasp + 0.5 × lift**, bounded
-between 0 and 1. Confirmed grasp completes reaching. Grasp on the table earns
-0.5; grasp with 4 cm clearance earns 0.75; grasp with at least 8 cm earns 1 and
-ends the episode successfully. The cube's orientation is accounted for when
-finding its lowest point. Raising an empty gripper earns no grasp/lift credit.
-
-Grasp uses ManiSkill Panda's existing two-finger contact test (at least 0.5 N
-per finger and force direction within 85 degrees of its opening axis). There is
-no hold-duration requirement, force penalty or slip penalty yet. Excessive-force
-tuning is deferred. The inherited random goal is not part of this reward or
-success condition. The reward check uses a random joint-position action;
-the training script below uses the pose/force adapter with the same reward.
-
-### Run and read the PPO baseline
+Run these commands in Bash:
 
 ```bash
 cd /home/ubuntu/faliure
 source scripts/activate_grip.sh
 python learning-withoutCLI/train_ppo.py
+python learning-withoutCLI/inspect_policy.py
 ```
 
-Edit `SETTINGS` at the top of `train_ppo.py`. The provisional CPU defaults are
-**8 updates × 128 steps = 1,024 steps**, at most 100 steps per episode, cycling
-actual cube masses **0.040, 0.064, 0.100 kg** at reset. Inertia scales with mass;
-shape and friction stay fixed. These are small engineering starting settings,
-not a validated learning budget or a tuned mass study. No new packages are needed.
+Edit SETTINGS at the top of each script. Training defaults to about ten million
+interactions across 63 GPU robots, equally split among 0.040, 0.064 and 0.100 kg.
+It starts from the published successful model by default; the newly added weight
+input initially has zero influence and can learn during PPO updates.
 
-Read the code first, using the official docs alongside it:
+The cube target floats at 10–30 cm upright bottom clearance. Carry the cube to
+that point and hold the arm still. Inspection compares true-weight inputs with
+nominal-weight inputs on identical starts, including unseen intermediate masses.
 
-1. `lift_task.py`: 21 inputs, physical mass, agreed reward, pose/force adapter.
-2. `ppo.py`, `Agent`: separate actor and critic, each with two 64-unit tanh layers.
-3. `train_ppo.py`, `main`: collect transitions and reset episodes with new masses.
-4. `ppo.py`, `generalized_advantages` and `update_ppo`: advantages and Adam updates.
-5. `train_ppo.py`, `save_checkpoint` and `load_checkpoint`: saving and restoring.
+Training artifacts go to `runs/learning/<run>/`; two-camera GIFs/PNGs, plots,
+raw measurements and grouped weight-test results go to `runs/inspect/<run>/`.
+Old 21-input checkpoints are incompatible; inspection selects only completed
+43-input weighted runs. The simulator starter remains in
+`learning-withoutCLI/examples/00_simulator_starter.py`.
 
-The actor and critic see only TCP pose (7), cube pose (7), true weight in newtons
-(1), and separate world finger–cube force vectors (3 + 3), collected at one
-simulation state. Fixed scaling divides positions by 0.3 m, weight by 1 N, forces
-by 10 N, and leaves `wxyz` quaternions unchanged. No RGB, joint positions, gripper
-width or hidden goal is added. Velocities/history are also absent, so this small
-feed-forward policy has only a partial view of the dynamics.
+## Optional checks and other examples
 
-The bounded seven-value action requests world TCP position/rotation increments
-(up to 1.5 cm and 0.1 rad per axis) and **0–8 N normal contact force per finger**.
-The adapter creates an absolute target TCP pose, clips its position to the visible
-workspace bounds, transforms it to the Panda root frame, and uses ManiSkill's
-absolute pose/IK controller. Targets may not be fully reached within one step.
-A feedback servo integrates force error into a bounded finger-position target;
-it closes with no contact and releases near zero demand. It uses the larger of
-the two projected normal forces to protect the more loaded finger. This is
-approximate force regulation, not an actuator-force-limit command or a guarantee
-of equal force on both fingers. Physical robot transfer has not been tested.
+`python learning-withoutCLI/checks/check_reward.py` checks the inherited reward
+and physical weight. `python learning-withoutCLI/checks/check_training.py` checks
+model initialization, mass/inertia, PPO updates and checkpoint reload. Their
+output belongs under `runs/checks/`.
 
-Each run has its own `runs/learning/<run>/` folder with settings, episode/update
-metrics, checkpoints **every 2 updates (256 steps)**, and `final.pt`.
-Ctrl+C saves `interrupted.pt`. Checkpoints include actor, critic, Adam state,
-counters, fixed scaling, feature/action/reward metadata and the PyTorch RNG state.
-To continue, set `resume_from` to a checkpoint path and raise `updates` above its
-completed count; all other dynamics/model/optimizer settings must match. Resume
-creates a new run and fresh episode, discarding the old partial episode/rollout.
-An interrupted optimizer update may be partial; continuation is not exact replay.
-`load_checkpoint(path)` also returns a model for
-`model.get_action(inputs, deterministic=True)`.
+The [official example and published pretrained runner](learning-withoutCLI/examples/maniskill_pick_cube/README.md)
+remain available as references. The published runner's original model has 42
+inputs and deliberately ignores the weighted environment's extra feature.
+The separate [article-inspired experiment](learning-withoutCLI/examples/article_cube_lift/README.md)
+is retained as an earlier experiment; it is not the main training setup.
 
-The implementation adapts the [official ManiSkill v3.0.1 PPO source](https://github.com/mani-skill/ManiSkill/blob/a4a4f9272ad64b1564035874b605ceb687b63ed8/examples/baselines/ppo/ppo.py)
-(commit `a4a4f9272ad64b1564035874b605ceb687b63ed8`), with its Apache-2.0 license
-preserved in `learning-withoutCLI/MANISKILL_LICENSE`. See the [official baseline guide](https://maniskill.readthedocs.io/en/latest/user_guide/reinforcement_learning/baselines.html).
-Local changes reduce the network and CPU budget, use tanh-transformed Gaussian
-actions with corrected log probabilities, and separate terminal and time-limit
-bootstrapping. The CLI, GPU wrappers and external logging dependencies are omitted.
-
-`python learning-withoutCLI/checks/check_training.py` runs targeted GAE/action/controller/mass tests,
-a scripted contact test, 32 PPO steps and a 16-step resume, including checkpoint
-action equivalence. Validation found finite parameter updates across all three
-masses. A scripted 2 N request produced about 1.67 N per finger, 6 N produced
-about 5.97 N, and release returned contact force to zero. This verifies controller
-response and training plumbing; it is not evidence of a learned grasp, lift,
-mass adaptation or generalization. Force-efficiency penalties remain inactive.
+The separate optional CLI scaffolding below is still incomplete and is not
+called by these plain Python scripts.
 
 ## Folder purposes
 
