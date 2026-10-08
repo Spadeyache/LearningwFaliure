@@ -144,3 +144,11 @@ labelled OFFICIAL MANISKILL EXAMPLE. It never selects custom lift checkpoints.
 TensorBoard was added to the existing project virtual environment to run upstream
 logging. Inspection uses the original network on one CPU simulator and runs five
 50-step episodes without training. That is a diagnostic sample, not a benchmark.
+
+## Grip-aware main setup
+
+The main scripts now have 45 observations and five actions, including a motor
+strength limit and measured-force reward cost. This pretrained reference keeps
+its original four-action controller and uses the preserved weighted v1 task in
+`weighted_lift_v1.py` for custom comparisons. It does not evaluate the new grip
+controller. Main training can convert its checkpoint into the larger network.

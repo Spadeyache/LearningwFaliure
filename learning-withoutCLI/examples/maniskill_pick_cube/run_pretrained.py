@@ -31,7 +31,7 @@ from inspect_example import ViewingTask, values
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE.parents[1]))
-from lift_task import LiftTask
+from weighted_lift_v1 import LiftTask
 
 DATASET = "haosulab/ManiSkill_Demonstrations"
 REVISION = "d674485bbffdd533914e52d272fdda34c0515608"
@@ -196,9 +196,9 @@ def main(settings=None):
                     checkpoint_sha256=sha256(model), dataset_revision=REVISION, published_metadata=metadata,
                     settings=settings, simulator_backend="physx_cpu", policy_inputs=42,
                     runner_sha256=hashlib.sha256(runner_source).hexdigest(),
-                    ppo_source_sha256=sha256(HERE / "ppo_upstream.py"), lift_task_sha256=sha256(HERE.parents[1] / "lift_task.py"),
+                    ppo_source_sha256=sha256(HERE / "ppo_upstream.py"), lift_task_sha256=sha256(HERE / "weighted_lift_v1.py"),
                     versions={package: version(package) for package in ("torch", "mani_skill", "sapien")},
-                    adaptations=["CPU simulation/rendering", "two inspection cameras", "current custom task uses its floating goal, standard reward and varied masses; original model ignores weight", "continue after success to inspect holding"],
+                    adaptations=["CPU simulation/rendering", "two inspection cameras", "preserved v1 floating-goal task with standard reward and varied masses; original model ignores weight", "continue after success to inspect holding"],
                     status="running")
     manifest_path = output / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")

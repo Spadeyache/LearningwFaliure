@@ -1,6 +1,6 @@
-# Weighted floating-goal PickCube
+# Grip-aware PPO: current setup
 
-Run from the project directory:
+Run the same plain scripts:
 
 ```bash
 cd /home/ubuntu/faliure
@@ -9,162 +9,178 @@ python learning-withoutCLI/train_ppo.py
 python learning-withoutCLI/inspect_policy.py
 ```
 
-Training saves under `runs/learning/<run>/`. Inspection selects the newest
-completed compatible weighted run and saves under `runs/inspect/<inspection>/`.
-It does not select old 21-input checkpoints or integration-check runs. Edit the
-SETTINGS dictionary at the top of each script. No command-line flags are needed.
+Edit SETTINGS at the top of each script. Training saves under
+`runs/learning/<run>/`; inspection saves under `runs/inspect/<run>/`.
+Check artifacts stay under `runs/checks/`.
 
-## What the three files mean
+## What the files do
 
-- `lift_task.py`: the simulator task, actual mass/inertia, observations and floating target.
-- `ppo.py`: the actor and critic, using the original ManiSkill network.
-- `train_ppo.py`: coordinates training using the pinned ManiSkill PPO loop.
+- `lift_task.py`: cube mass/inertia, floating goal, measurements and reward.
+- `grip_controller.py`: native Panda finger opening plus a chosen motor force limit.
+- `ppo.py`: actor/critic and conversion of existing models into the larger network.
+- `train_ppo.py`: warm-start the latest model and run the pinned ManiSkill PPO loop.
+- `inspect_policy.py`: run without learning, log signals and compare weight estimates.
+- `checks/`: optional checks of controllers, rewards, PPO updates and loading.
+- `examples/`: simulator starter, original ManiSkill references and earlier experiments.
 
-The loop and architecture come from ManiSkill v3.0.1 commit
-`a4a4f9272ad64b1564035874b605ceb687b63ed8`. The source remains unchanged in
-`examples/maniskill_pick_cube/ppo_upstream.py`, with its Apache license. Each run
-freezes the task, model, upstream source and runtime beside a provenance manifest.
+## Inputs: retain the previous 43 and append two forces
 
-## What stays aligned with the working example
-
-Same Panda, cube/table scene, randomized cube placement, native
-`pd_ee_delta_pos` controller, 50-step attempts, normalized dense PickCube reward
-and success condition. The actor and critic each have three 256-unit tanh layers.
-The original Gaussian exploration, PPO clipping, finite-horizon learning targets
-and episode-ending value handling are retained.
-
-Success means the **cube**, not the empty arm, is within 2.5 cm of the goal and
-the arm is nearly stationary. Inspection also requires confirmed grasp for its
-separate `held_goal` metric. Continuing inspection to the full attempt checks
-holding after an initial success.
-
-## The requested differences
-
-1. The target retains random XY coordinates, but always floats above the table.
-   SETTINGS `goal_clearance_m=[0.10,0.30]` chooses the goal centre so an upright
-   cube would have 10–30 cm bottom clearance. The old fixed 8 cm threshold is gone.
-   The existing green sphere is the target marker.
-2. Physical mass is 0.040, 0.064 or 0.100 kg. Inertia scales with mass; shape and
-   friction remain standard. True gravitational **weight in newtons** is appended
-   to the original 42 inputs. This makes **43 inputs**.
-3. Training uses a smaller balanced GPU batch for this machine: 63 robots, 21
-   at each mass; nine evaluation robots, three at each mass. Each GPU environment
-   retains its assigned mass across resets. Across the shared policy's experience,
-   all three masses are present equally. CPU single-robot checks cycle mass at reset.
-4. By default training initializes from the published working PPO policy.
-   Its original weights are copied into the new network. The added weight-input
-   column starts at zero, preserving the original behavior. Training must learn
-   to use that feature; initialization alone is not adaptation. Set
-   `initialize_from_pretrained=False` to train from random weights instead.
-
-The pretrained source is
-[haosulab/ManiSkill_Demonstrations](https://huggingface.co/datasets/haosulab/ManiSkill_Demonstrations),
-revision `d674485bbffdd533914e52d272fdda34c0515608`,
-`ppo_pd_ee_delta_pos_ckpt.pt`. Its published SHA256 is verified on every use.
-Its exact training parameter overrides are not known; our settings follow the
-pinned PPO reference rather than claiming an exact reconstruction of that run.
-
-## Measurements and commands
-
-| Input group | Count |
+| Measurement | Numbers |
 |---|---:|
-| Joint positions, including fingers | 9 |
+| Joint positions | 9 |
 | Joint velocities | 9 |
-| Grasp flag | 1 |
-| TCP position/orientation | 7 |
+| Grasp contact flag | 1 |
+| Hand pose | 7 |
 | Floating goal position | 3 |
-| Cube position/orientation | 7 |
-| TCP-to-cube displacement | 3 |
+| Cube pose | 7 |
+| Hand-to-cube displacement | 3 |
 | Cube-to-goal displacement | 3 |
-| True object weight, N | 1 |
-| Total | 43 |
+| True object weight, newtons | 1 |
+| Measured left finger compression, newtons | 1 |
+| Measured right finger compression, newtons | 1 |
+| Total | 45 |
 
-The four normalized action numbers request XYZ position increments and finger
-opening (-1 closed, +1 open). Orientation is maintained by the native controller.
-Raw contact forces are logged for inspection; they are not extra model inputs.
-Images remain viewing artifacts, not model inputs.
+Object weight remains at index 42. The new forces are at indices 43 and 44.
+Force observations are measured contact forces projected along each finger's
+opening direction, with negative compression clamped to zero. They are neither
+requested motor limits nor the grasp detector's binary flags.
 
-## Training settings and checkpoints
+## Actions: retain the previous four and append strength
 
-Default budget is **10,001,250 interactions**: 3,175 rollouts of 63 × 50 = 3,150.
-Each rollout is split into seven minibatches of 450, with four learning epochs.
-This is a full training budget, substantially longer than the old 25,600 steps.
+The five normalized actions are XYZ hand movement, finger opening, and
+per-finger motor force limit. The arm settings and native opening mapping stay
+unchanged. Opening maps from -1 closed to +1 open. Strength maps from -1 to
+0.25 N and +1 to 40 N **per finger**, controlled by `grip_force_limits_n`.
 
-Reference choices: Adam learning rate 0.0003, gamma 0.8, GAE lambda 0.9, PPO clip
-0.2, critic coefficient 0.5, gradient limit 0.5, entropy coefficient 0, policy
-change stopping threshold 0.1. The GPU batch size is our hardware adjustment.
-The training reward is the original reach + grasp + move-to-goal + stillness
-reward, with a success boost and division by five.
+Strength caps how much the native position-drive motors may push. It does not
+ask the simulator to fabricate an exact contact force. Measured forces can also
+contain collision impacts. Both fingers use the same requested limit, and each
+parallel robot can choose its own limit. The cap applies to both closing and
+opening effort; a higher limit also lets the fingers open more firmly. Native implicit position-drive
+integration is retained on CPU and GPU.
 
-`ckpt_<iteration>.pt` is saved at evaluation points; `final_ckpt.pt` is saved
-on completion. These are original-style **network weights**, with settings and
-source metadata in the neighboring manifest. Setting `checkpoint` starts from
-saved compatible weights with a fresh Adam optimizer and simulator; it is not
-an exact optimizer-state resume. Old custom 21-input/seven-output checkpoints
-cannot be used. The original 42-input pretrained model requires the explicit
-initialization conversion.
+The real Franka gripper also exposes width and grasp force, but its API and
+force convention are not identical to our simulated per-finger motor cap.
+The custom action is a project extension, not ManiSkill's original baseline.
 
-For CPU training choose `sim_backend="physx_cpu"`, `num_envs=1`,
-`num_eval_envs=1`, and whole 50-step rollouts. GPU training is the default.
-CPU scenes rebuild at reset to clear stale contact flags.
+## Objective: carry and hold with only the force needed
 
-## Test whether weight information helps
+The green target is a floating point for the **cube centre**, at 10–30 cm
+upright bottom clearance, retaining the original randomized XY.
+The task keeps PickCube's reaching, grasping, carrying and stillness terms.
+Success additionally requires finger contact while at the target with a still arm.
 
-Inspection uses the actual masses selected in SETTINGS. You can also test unseen
-intermediate masses such as 0.050 and 0.080 kg. It uses the same reset seeds for
-both input conditions at every actual mass:
+Each step subtracts:
 
-- `true`: supply the actual object's weight.
-- `nominal`: supply the weight of a 0.040 kg cube while physical mass stays unchanged.
-
-The current default compares actual 0.100, 0.500 and 1.000 kg cubes, with ten matched
-starts per mass using the correct weight and ten using the 0.040 kg estimate.
-The 0.500 and 1.000 kg cubes are heavier than any training cube. Their correct
-weight inputs are also outside the training range, so failures in both conditions
-do not establish that an incorrect estimate was responsible. A run-level
-`success_rates.png` compares final grasped-at-goal success for both conditions. Only the last
-model input changes between conditions. Both conditions save two camera views
-for their first attempt. Change `masses_kg` and `nominal_mass_kg` in the inspection
-settings to try other actual masses or estimates; this does not retrain the model.
-
-Each attempt rebuilds the CPU scene so contacts from the previous attempt cannot
-carry over. The original 42 starting measurements must match across conditions
-and masses. Both input conditions record their first attempt with elevated camera
-views, initial/final/closest-held-goal PNGs, GIFs and plots. All attempts log actual measurements,
-the exact inputs fed to the model, actions, reward and success. GIFs default to
-half speed; plot axes use simulation seconds.
-
-`summary.json` groups goal success and grasped goal success by mass and input
-condition, measuring both success at least once and success at the end. A higher
-correct-weight result supports a benefit from knowing weight. Equal results mean
-these trials do not demonstrate that benefit. A small sample is not proof of
-general robustness. Compare enough matched starts and repeat independent training
-seeds before claiming an improvement.
-
-This is a feed-forward weight-conditioned policy. It does not estimate unknown
-weight, remember previous attempts, or update from success/failure during
-inspection. Those would be separate experiments.
-
-## Verification performed
-
-The reward check confirms equivalence with the installed original task's reward,
-floating targets and actual weight. The training check verifies mass/inertia,
-matching reset states, native opening endpoints, preservation of the published
-policy at initialization, finite PPO updates, learning in the new input column
-and checkpoint reload.
-
-```bash
-python learning-withoutCLI/checks/check_reward.py
-python learning-withoutCLI/checks/check_training.py
+```text
+grip_force_cost × clamp(mean measured finger compression / maximum motor limit, 0, 1)
 ```
 
-These checks validate implementation, not learned adaptation. A short 6,300-step
-GPU run verified the actual 63-robot configuration; its artifacts are separated
-under `runs/checks/alignment/`. The full default run has not been started.
+The default coefficient is 0.05. Thus the cost is at most 0.05 per step;
+successful holding remains the dominant reward. This encourages lower measured
+squeezing while still holding. It does not prescribe a force from a weight formula
+or guarantee that the learned policy will use weight. All reward parts and the
+total are logged, including after success.
 
-The matched inspection check used four masses (including unseen 0.050 kg), one
-reset seed and two input conditions: all eight attempts reached the goal while
-grasped. Success was identical with true and nominal weight inputs, so this small
-check does not establish a weight-information advantage. Two-camera artifacts
-and verified logs are under
-`runs/checks/alignment/inspection/20261007T220434-15b51dde/`.
+Training now continues through a complete 50-step attempt after reaching the
+goal. That gives the policy experience holding the cube, rather than immediately
+resetting on the first success. Each attempt is 2.5 simulated seconds.
+
+## Fine-tuning the latest trained policy
+
+By default `checkpoint="latest"` chooses the newest completed main training
+checkpoint compatible with either the previous weighted policy or this extension.
+Checks never participate in automatic selection. A specific path pins a model.
+If no compatible model exists, selection stops with an explanation.
+To start from the published model instead, set `checkpoint=None` and leave
+`initialize_from_pretrained=True`. Set both to None/False for random initialization.
+
+A previous 43-input/four-action model is converted by copying every learned
+existing weight, zeroing the two added input columns, and preserving the first
+four action outputs and critic predictions. The added strength output initially
+requests the maximum allowed strength, with exploration. It must learn during PPO.
+The new motor cap and reward change physical behavior, even if copied actions match.
+
+The official 42-input/four-action model is also convertible; its added weight
+and force columns start at zero. Existing 45-input/five-action models load directly.
+Old custom 21-input/seven-action policies are incompatible.
+
+Continuation loads model weights but restarts Adam and simulation. It is
+fine-tuning, not exact optimizer-state resumption. Runs freeze the controller,
+task, model, launcher, pinned PPO source and license and record the initialization
+checkpoint/hash plus source settings. Earlier files and artifacts remain intact.
+
+## Starting training settings
+
+The mass range is 0.040, 0.064, 0.100, 0.250 and 0.500 kg. Shape and friction
+remain unchanged; physical inertia scales with mass. Sixty GPU environments
+provide twelve robots per mass, with ten evaluation robots (two per mass).
+GPU masses remain assigned across resets. CPU one-robot checks cycle masses.
+
+One rollout contains 60 × 50 = 3,000 interactions.
+The default fine-tuning budget is 1,002,000 interactions: 334 collect/learn cycles.
+Each cycle has up to four PPO epochs, ten minibatches per pass, and target-KL
+early stopping. The terminal's Epoch counter means collect/learn cycles.
+Learning rate is 0.0001; other PPO loss/advantage settings retain the reference.
+These are starting choices, not tuned or proven settings.
+
+PPO remains the pinned ManiSkill baseline at commit
+`a4a4f9272ad64b1564035874b605ceb687b63ed8`: three 256-unit tanh layers per network,
+learned Gaussian exploration, clipping actions before physics, and finite-horizon
+GAE. The source baseline is preserved unchanged; the runtime replaces the model
+and task integration. Published checkpoint metadata does not establish the exact
+original training seed, budget or hyperparameter overrides.
+
+## Inspect whether grip strength changes with weight
+
+Inspection runs ten matched starts per actual mass with both true and fixed
+40 g reported-weight inputs. Only index 42 changes in the nominal condition;
+measured finger-force feedback stays available. The model weights are unchanged.
+
+Outputs include:
+
+- `summary.json`: success, grasp loss after lifting, average measured compression
+  and requested strength during lifted contact.
+- `success_rates.png`: success rates by physical mass and reported weight.
+- `grip_strength_by_mass.png`: measured force and requested limit by mass.
+- `steps.jsonl`: all actual measurements, fed inputs, actions and reward parts.
+- Two camera GIFs and initial/final/closest-held-goal PNGs for the first attempt
+  in **both** conditions at each mass.
+- Per-attempt plots of rewards, forces, requested limits and cube position relative
+  to the fingers.
+
+Force averages include only grasped steps with cube bottom clearance above 3 cm.
+Missing averages mean no qualifying contact; compare success rates alongside
+force plots. Loss of a grasp flag can mean opening or dropping, not confirmed
+slipping. Relative cube motion and recordings help diagnose it.
+Friction is still the original setting; no slipping or failure is artificially forced.
+
+A successful experiment should demonstrate secure holds across masses, lower
+force usage for light cubes where feasible, and repeatable comparisons against
+fixed strength/incorrect weight. True-weight versus nominal input alone does not
+prove adaptation from past failures. The policy is feedforward, receives true
+weight during training and has no learned weight estimator or persistent memory.
+
+The original pretrained runner uses the preserved v1 weighted task in
+`examples/maniskill_pick_cube/weighted_lift_v1.py`, with its original controller
+and reward. It is a separate reference, not an evaluation of this new controller.
+
+## Verification of this extension
+
+CPU reward/controller checks and a 150-step PPO run passed. A 6,000-step GPU
+run with 60 robots passed, including independent limits and partial-reset isolation.
+Both added force columns and the strength output changed during PPO updates,
+and the final model reloaded exactly. Six inspection attempts exercised raw logs,
+new force plots, rewards, and both cameras. These are integration checks; the
+long fine-tuning budget has not been run and learned adaptation is unproven.
+
+A separate fixed-position hold diagnostic used one matched starting seed.
+At a 1 N per-finger motor limit, a 40 g cube stayed lifted while a 500 g cube
+dropped. At 5 N, both stayed lifted. This establishes a physical force/weight
+tradeoff without changing friction, rather than proving that PPO learned it.
+The inherited grasp detector requires 0.5 N contact on both fingers; very gentle
+physically stable holds can fall below that binary detector threshold.
+
+Artifacts: `runs/checks/grip_extension/calibration/20261008T031936-anchored/`,
+`runs/checks/grip_extension/gpu_training/20261008T031725-a918879c/`, and
+`runs/checks/grip_extension/inspection/20261008T031931-9f92e11a/`.

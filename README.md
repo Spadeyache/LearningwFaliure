@@ -1,13 +1,13 @@
 # Gripping and lifting PPO learning workspace
 
-The main scripts now follow ManiSkill's working PickCube PPO baseline, with a
-floating cube goal and variable physical mass. They use 43 state inputs (original
-42 plus true object weight), four native XYZ/finger-opening actions, and the
-original goal-reaching reward and PPO learning loop.
+The main scripts extend ManiSkill's PickCube PPO baseline with a floating cube
+goal, variable physical mass and grip-strength control. The policy now has
+45 inputs (previous 43 plus measured left/right finger forces) and five actions
+(previous XYZ/opening plus a per-finger motor strength limit).
 
 Read [the current setup and experiment guide](learning-withoutCLI/README.md).
-Short CPU/GPU integration runs passed; learned weight adaptation is not yet
-established, and the full default training run has not been started.
+This setup supports fine-tuning from the latest trained weighted policy.
+Adding force control and a reward cost does not yet prove learned weight adaptation.
 
 ## Train and inspect
 
@@ -20,36 +20,35 @@ python learning-withoutCLI/train_ppo.py
 python learning-withoutCLI/inspect_policy.py
 ```
 
-Edit SETTINGS at the top of each script. Training defaults to about ten million
-interactions across 63 GPU robots, equally split among 0.040, 0.064 and 0.100 kg.
-It starts from the published successful model by default; the newly added weight
-input initially has zero influence and can learn during PPO updates.
+Edit SETTINGS at the top of each script. The default fine-tuning budget is
+1,002,000 interactions (334 cycles), across 60 GPU robots equally split among
+40, 64, 100, 250 and 500 gram cubes. Training copies the newest compatible model
+from completed main runs and learns the added strength output. Adam restarts.
 
 The cube target floats at 10–30 cm upright bottom clearance. Carry the cube to
-that point and hold the arm still. Inspection compares true-weight inputs with
-nominal-weight inputs on identical starts, including unseen intermediate masses.
+that point and keep holding it with a still arm. A small measured-force cost
+encourages gentler successful grips. Finger opening and arm movement mappings
+stay unchanged; the strength action ranges from 0.25 to 40 N per finger.
 
-Training artifacts go to `runs/learning/<run>/`; two-camera GIFs/PNGs, plots,
-raw measurements and grouped weight-test results go to `runs/inspect/<run>/`.
-Old 21-input checkpoints are incompatible; inspection selects only completed
-43-input weighted runs. The simulator starter remains in
-`learning-withoutCLI/examples/00_simulator_starter.py`.
+Training artifacts go to `runs/learning/<run>/`. Inspection saves two-camera
+GIFs/PNGs, plots, raw measurements and success/force summaries under
+`runs/inspect/<run>/`. Inspection selects only completed 45-input/five-action
+grip-aware models. Earlier 43-input/four-action models can initialize training,
+but cannot directly run with the new controller. Old custom 21-input models
+remain incompatible. The starter stays in `learning-withoutCLI/examples/`.
 
 ## Optional checks and other examples
 
-`python learning-withoutCLI/checks/check_reward.py` checks the inherited reward
-and physical weight. `python learning-withoutCLI/checks/check_training.py` checks
-model initialization, mass/inertia, PPO updates and checkpoint reload. Their
-output belongs under `runs/checks/`.
+`python learning-withoutCLI/checks/check_reward.py` checks physical force/weight
+observations and the reward cost. `python learning-withoutCLI/checks/check_training.py`
+checks model conversion, controller behavior, PPO updates and checkpoint loading.
+Their results live under `runs/checks/`.
 
 The [official example and published pretrained runner](learning-withoutCLI/examples/maniskill_pick_cube/README.md)
-remain available as references. The published runner's original model has 42
-inputs and deliberately ignores the weighted environment's extra feature.
-The separate [article-inspired experiment](learning-withoutCLI/examples/article_cube_lift/README.md)
-is retained as an earlier experiment; it is not the main training setup.
-
-The separate optional CLI scaffolding below is still incomplete and is not
-called by these plain Python scripts.
+remain separate references. The runner keeps its original 42-input policy and
+the preserved v1 weighted task, without the new grip-strength action.
+The [article-inspired experiment](learning-withoutCLI/examples/article_cube_lift/README.md)
+is also retained. The optional CLI scaffolding below is not used by these scripts.
 
 ## Folder purposes
 
