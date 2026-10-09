@@ -13,15 +13,18 @@ import subprocess
 import sys
 import uuid
 import torch
-from lift_task import ACTION_DESCRIPTION, ENV_ID, ENV_SETTINGS, HORIZON, INPUT_FIELDS, INPUT_SIZES, ORIGIN, LEGACY_ORIGIN
-from ppo import Agent, SOURCE_COMMIT, initialize_from_pretrained
+from lift_task import ACTION_DESCRIPTION, ENV_ID, ENV_SETTINGS, HORIZON, INPUT_FIELDS, INPUT_SIZES, ORIGIN, LEGACY_ORIGIN, FRICTION_KEYS, friction_settings, friction_experiment
+from ppo import Agent, SOURCE_COMMIT, POLICY_ARCHITECTURE, initialize_from_pretrained
+from hold_task import HOLD_ENV_ID
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 SOURCE = HERE / "examples" / "maniskill_pick_cube" / "ppo_upstream.py"
 SETTINGS = {
     "seed": 1,
-    "total_timesteps": 1_002_000,  # Fine-tuning starting budget: 334 collect/learn cycles.
+    "training_stage": "hold_strength", # Hold the arm still; PPO learns only the strength branch.
+    # Set training_stage="carry_strength" later to test strength learning during carrying.
+    "total_timesteps": 150_000,    # Force-penalty trial: 50 collect/learn cycles.
     "num_envs": 60,               # 12 robots at each of five physical masses.
     "num_steps": 50,              # 60 * 50 = 3,000 transitions before learning.
     "num_minibatches": 10,        # 300 transitions per optimizer step.
@@ -45,7 +48,9 @@ SETTINGS = {
     "masses_kg": ENV_SETTINGS["masses_kg"],
     "goal_clearance_m": ENV_SETTINGS["goal_clearance_m"],
     "grip_force_limits_n": ENV_SETTINGS["grip_force_limits_n"],
-    "grip_force_cost": ENV_SETTINGS["grip_force_cost"],
+    # Hidden simulator friction: heavier cubes are deliberately more slippery.
+    **{key: ENV_SETTINGS[key] for key in FRICTION_KEYS},
+    "grip_force_cost": 0.10,       # Trial: double the previous measured-force penalty (0.05).
     "initialize_from_pretrained": True, # Fallback for checkpoint=None; published 42-input policy.
     "checkpoint": "latest",      # Newest completed grip-aware or previous weighted policy.
     "run_root": str(ROOT / "runs" / "learning"),
@@ -65,8 +70,7 @@ def load_checkpoint(path):
     if (saved.get("artifact_origin") != ORIGIN or saved.get("input_sizes") != INPUT_SIZES
             or saved.get("action_description") != ACTION_DESCRIPTION):
         raise ValueError("Choose a 45-input/five-output grip-aware checkpoint; train_ppo converts previous weighted policies")
-    agent = Agent()
-    agent.load_state_dict(torch.load(path, map_location="cpu", weights_only=True))
+    agent = initialize_from_pretrained(Agent(), path)
     agent.eval()
     return agent, saved
 
@@ -94,6 +98,12 @@ def latest_checkpoint(allow_legacy=False):
 
 def main(settings=None):
     settings = {**SETTINGS, **(settings or {})}
+    if settings['training_stage'] not in ('hold_strength', 'carry_strength'):
+        raise ValueError('Choose hold_strength or carry_strength')
+    if settings['training_stage'] == 'hold_strength' and (settings['partial_reset'] or settings['eval_partial_reset']):
+        raise ValueError('Hold practice needs synchronized full resets: partial_reset=False and eval_partial_reset=False')
+    settings.update(friction_settings(settings))
+    training_env_id = HOLD_ENV_ID if settings['training_stage'] == 'hold_strength' else ENV_ID
     for key in ("total_timesteps", "num_envs", "num_steps", "num_minibatches", "num_eval_envs", "num_eval_steps", "eval_freq", "update_epochs"):
         if not isinstance(settings[key], int) or settings[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
@@ -118,7 +128,7 @@ def main(settings=None):
     output = Path(settings["run_root"]).resolve() / name
     output.mkdir(parents=True, exist_ok=False)
     # Imports in the runtime resolve to these frozen sources.
-    for filename in ("lift_task.py", "grip_controller.py", "ppo.py", "train_ppo.py"):
+    for filename in ("lift_task.py", "hold_task.py", "grip_controller.py", "ppo.py", "train_ppo.py"):
         (output / filename).write_bytes((HERE / filename).read_bytes())
     pinned = output / "examples" / "maniskill_pick_cube"
     pinned.mkdir(parents=True)
@@ -129,12 +139,14 @@ def main(settings=None):
     replacement = 'env_kwargs = ' + repr(dict(obs_mode="state", render_mode="rgb_array", sim_backend=settings["sim_backend"],
         render_backend="cpu", reward_mode="normalized_dense", masses_kg=masses, goal_clearance_m=settings["goal_clearance_m"],
         grip_force_limits_n=settings["grip_force_limits_n"], grip_force_cost=settings["grip_force_cost"],
+        **friction_settings(settings),
         sensor_configs={"shader_pack": "minimal"}, human_render_camera_configs={"shader_pack": "minimal"}))
     if original.count(old) != 1:
         raise RuntimeError("Pinned upstream source changed")
-    runtime = original.replace(old, replacement).replace("import mani_skill.envs\n", "import mani_skill.envs\nimport lift_task\n", 1)
+    runtime = original.replace(old, replacement).replace("import mani_skill.envs\n", "import mani_skill.envs\nimport lift_task\nimport hold_task\n", 1)
     start, end = runtime.index("class Agent(nn.Module):"), runtime.index("class Logger:")
     runtime = runtime[:start] + "from ppo import Agent\n\n" + runtime[end:]
+    runtime = runtime.replace("optim.Adam(agent.parameters(),", "optim.Adam((p for p in agent.parameters() if p.requires_grad),")
     runtime = runtime.replace("import torch\n", "import torch\ntorch.set_num_threads(4)\n", 1)
     runtime = runtime.replace("eval_envs.step(agent.get_action(eval_obs, deterministic=True))", "eval_envs.step(clip_action(agent.get_action(eval_obs, deterministic=True)))")
     runtime = runtime.replace("runs/{run_name}", "{run_name}")
@@ -154,6 +166,8 @@ def main(settings=None):
                               checkpoint=str(source_checkpoint), sha256=digest(source_checkpoint),
                               source_observations=previous.get("observations"), source_actions=previous.get("actions"),
                               source_settings=previous.get("settings"), optimizer_restarted=True,
+                              source_policy_architecture=previous.get("policy_architecture", "shared_actor"),
+                              branch_initialization="copy trained actor into separate strength branch; freeze movement",
                               added_force_columns="zero when extending 43 inputs", added_strength_action="maximum when extending four actions")
     elif settings["initialize_from_pretrained"]:
         sys.path.insert(0, str(SOURCE.parent))
@@ -164,7 +178,9 @@ def main(settings=None):
         torch.save(agent.state_dict(), checkpoint)
         initialization = dict(kind="published_42_input_policy", checkpoint=str(published), url=url,
                               sha256=digest(published), added_weight_and_force_columns="zero", added_strength_action="maximum", weight_input_initially_used=False)
-    manifest = dict(artifact_origin=ORIGIN, environment=ENV_ID, observations=45, actions=5,
+    manifest = dict(artifact_origin=ORIGIN, environment=training_env_id, evaluation_environment=training_env_id, deployment_environment=ENV_ID, observations=45, actions=5,
+                    policy_architecture=POLICY_ARCHITECTURE, optimized_actions=["grip_strength_limit"],
+                    frozen_actions=["x", "y", "z", "finger_opening"],
                     action_description=ACTION_DESCRIPTION, input_fields=INPUT_FIELDS, input_sizes=INPUT_SIZES,
                     settings=settings, horizon=HORIZON, initialization=initialization,
                     source_commit=SOURCE_COMMIT, source_sha256=digest(SOURCE),
@@ -172,13 +188,18 @@ def main(settings=None):
                     versions={p: version(p) for p in ("torch", "mani_skill", "sapien")},
                     differences_from_example=["floating goal range", "varied physical masses/inertias", "true weight and measured finger forces appended to 42 inputs",
                                               "independent per-finger motor strength action", "held-goal success and measured-force cost",
-                                              "smaller balanced parallel batch", "warm start from latest trained policy", "full-episode holding during training"],
+                                              "smaller balanced parallel batch", "warm start from latest trained policy", "full-episode holding during training",
+                                              "independent strength branch and frozen movement", "strength-only PPO likelihood",
+                                              "explicitly recorded hidden mass-correlated friction profile",
+                                              "physical hold preparation" if settings["training_stage"] == "hold_strength" else "carry-stage strength practice"],
+                    friction_experiment=friction_experiment(settings, masses),
+                    training_stage=settings["training_stage"],
                     checkpoint_contents="model weights only; continuation restarts Adam and simulation", status="running")
     manifest_path = output / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     (output / "settings.json").write_text(json.dumps(settings, indent=2) + "\n")
-    command = [sys.executable, "-u", str(output / "ppo_runtime.py"), "--exp-name", str(output), "--env-id", ENV_ID, "--no-capture-video", "--no-track"]
-    excluded = {"run_root", "masses_kg", "goal_clearance_m", "initialize_from_pretrained", "checkpoint", "sim_backend", "grip_force_limits_n", "grip_force_cost"}
+    command = [sys.executable, "-u", str(output / "ppo_runtime.py"), "--exp-name", str(output), "--env-id", training_env_id, "--no-capture-video", "--no-track"]
+    excluded = set(FRICTION_KEYS) | {"training_stage", "run_root", "masses_kg", "goal_clearance_m", "initialize_from_pretrained", "checkpoint", "sim_backend", "grip_force_limits_n", "grip_force_cost"}
     for key, value in settings.items():
         if key in excluded:
             continue
@@ -191,7 +212,8 @@ def main(settings=None):
         command.extend(["--no-cuda", "--reconfiguration-freq", "1"])
     child_env = dict(os.environ)
     child_env["LD_LIBRARY_PATH"] = "/usr/lib/wsl/lib:" + child_env.get("LD_LIBRARY_PATH", "")
-    print("Grip-aware PickCube fine-tuning:", output, flush=True)
+    print("Grip-strength branch training (" + settings["training_stage"] + "):", output, flush=True)
+    print("Friction conditions:", manifest["friction_experiment"], flush=True)
     try:
         with (output / "console.log").open("w") as log:
             process = subprocess.Popen(command, cwd=ROOT, env=child_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)

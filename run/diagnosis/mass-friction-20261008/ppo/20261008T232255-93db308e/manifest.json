@@ -1,0 +1,237 @@
+{
+  "artifact_origin": "maniskill_grip_weighted_pick_cube_v2",
+  "environment": "GripWeightedHoldCube-v1",
+  "evaluation_environment": "GripWeightedHoldCube-v1",
+  "deployment_environment": "GripWeightedPickCube-v2",
+  "observations": 45,
+  "actions": 5,
+  "policy_architecture": "frozen_movement_independent_strength_v1",
+  "optimized_actions": [
+    "grip_strength_limit"
+  ],
+  "frozen_actions": [
+    "x",
+    "y",
+    "z",
+    "finger_opening"
+  ],
+  "action_description": "5 actions: native root-frame XYZ increments, finger opening (-1 closed, +1 open), per-finger motor strength limit (-1 minimum, +1 maximum)",
+  "input_fields": [
+    "joint_positions",
+    "joint_velocities",
+    "is_grasped",
+    "tcp_pose_world_m_wxyz",
+    "goal_position_world_m",
+    "cube_pose_world_m_wxyz",
+    "tcp_to_cube_world_m",
+    "cube_to_goal_world_m",
+    "object_weight_n",
+    "left_finger_force_n",
+    "right_finger_force_n"
+  ],
+  "input_sizes": [
+    9,
+    9,
+    1,
+    7,
+    3,
+    7,
+    3,
+    3,
+    1,
+    1,
+    1
+  ],
+  "settings": {
+    "seed": 1,
+    "training_stage": "hold_strength",
+    "total_timesteps": 6000,
+    "num_envs": 60,
+    "num_steps": 50,
+    "num_minibatches": 10,
+    "num_eval_envs": 10,
+    "num_eval_steps": 50,
+    "eval_freq": 2,
+    "learning_rate": 0.0001,
+    "gamma": 0.8,
+    "gae_lambda": 0.9,
+    "update_epochs": 1,
+    "clip_coef": 0.2,
+    "ent_coef": 0.0,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "target_kl": 0.1,
+    "finite_horizon_gae": true,
+    "partial_reset": false,
+    "eval_partial_reset": false,
+    "control_mode": "pd_ee_delta_pos",
+    "sim_backend": "physx_cuda",
+    "masses_kg": [
+      0.04,
+      0.064,
+      0.1,
+      0.25,
+      0.5
+    ],
+    "goal_clearance_m": [
+      0.1,
+      0.3
+    ],
+    "grip_force_limits_n": [
+      0.25,
+      40.0
+    ],
+    "friction_profile": "mass_correlated_linear",
+    "friction_mass_range_kg": [
+      0.04,
+      0.5
+    ],
+    "cube_friction_range": [
+      1.0,
+      0.4
+    ],
+    "finger_friction_coefficient": 0.2,
+    "grip_force_cost": 0.1,
+    "initialize_from_pretrained": true,
+    "checkpoint": "/home/ubuntu/faliure/runs/learning/20261008T210741-a1e4e677/final_ckpt.pt",
+    "run_root": "/home/ubuntu/faliure/run/diagnosis/mass-friction-20261008/ppo"
+  },
+  "horizon": 50,
+  "initialization": {
+    "kind": "trained_policy",
+    "checkpoint": "/home/ubuntu/faliure/runs/learning/20261008T210741-a1e4e677/final_ckpt.pt",
+    "sha256": "e69d9109dd058f3cd422ae382f7a012a78b74c4c6d49f9925ae0360552cb85e6",
+    "source_observations": 45,
+    "source_actions": 5,
+    "source_settings": {
+      "seed": 1,
+      "training_stage": "hold_strength",
+      "total_timesteps": 150000,
+      "num_envs": 60,
+      "num_steps": 50,
+      "num_minibatches": 10,
+      "num_eval_envs": 10,
+      "num_eval_steps": 50,
+      "eval_freq": 25,
+      "learning_rate": 0.0001,
+      "gamma": 0.8,
+      "gae_lambda": 0.9,
+      "update_epochs": 4,
+      "clip_coef": 0.2,
+      "ent_coef": 0.0,
+      "vf_coef": 0.5,
+      "max_grad_norm": 0.5,
+      "target_kl": 0.1,
+      "finite_horizon_gae": true,
+      "partial_reset": false,
+      "eval_partial_reset": false,
+      "control_mode": "pd_ee_delta_pos",
+      "sim_backend": "physx_cuda",
+      "masses_kg": [
+        0.04,
+        0.064,
+        0.1,
+        0.25,
+        0.5
+      ],
+      "goal_clearance_m": [
+        0.1,
+        0.3
+      ],
+      "grip_force_limits_n": [
+        0.25,
+        40.0
+      ],
+      "grip_force_cost": 0.1,
+      "initialize_from_pretrained": true,
+      "checkpoint": "latest",
+      "run_root": "/home/ubuntu/faliure/runs/learning"
+    },
+    "optimizer_restarted": true,
+    "source_policy_architecture": "frozen_movement_independent_strength_v1",
+    "branch_initialization": "copy trained actor into separate strength branch; freeze movement",
+    "added_force_columns": "zero when extending 43 inputs",
+    "added_strength_action": "maximum when extending four actions"
+  },
+  "source_commit": "a4a4f9272ad64b1564035874b605ceb687b63ed8",
+  "source_sha256": "3fa4818861d428480244aae889bc679b2c8e89b59d6289014003c266a84dbab0",
+  "task_sha256": "48766823c81db14d18e2015a7f3603076ed94e7b4ced101236172943cc4e735f",
+  "model_sha256": "86e451168eb448965213ac9ab018fb9d89a3f3bddd99df5d973d771723d95708",
+  "controller_sha256": "18246271be78889e7828e33cf12af9a67d57b445428d53e3aa1ffb9c150ff26b",
+  "versions": {
+    "torch": "2.14.0",
+    "mani_skill": "3.0.1",
+    "sapien": "3.0.3"
+  },
+  "differences_from_example": [
+    "floating goal range",
+    "varied physical masses/inertias",
+    "true weight and measured finger forces appended to 42 inputs",
+    "independent per-finger motor strength action",
+    "held-goal success and measured-force cost",
+    "smaller balanced parallel batch",
+    "warm start from latest trained policy",
+    "full-episode holding during training",
+    "independent strength branch and frozen movement",
+    "strength-only PPO likelihood",
+    "physical hold preparation"
+  ],
+  "friction_experiment": {
+    "settings": {
+      "friction_profile": "mass_correlated_linear",
+      "friction_mass_range_kg": [
+        0.04,
+        0.5
+      ],
+      "cube_friction_range": [
+        1.0,
+        0.4
+      ],
+      "finger_friction_coefficient": 0.2
+    },
+    "hidden_from_policy": true,
+    "changes_with_actual_mass": true,
+    "coefficients_by_mass": [
+      {
+        "mass_kg": 0.04,
+        "cube_static_friction": 1.0,
+        "cube_dynamic_friction": 1.0,
+        "finger_static_friction": 0.2,
+        "finger_dynamic_friction": 0.2
+      },
+      {
+        "mass_kg": 0.064,
+        "cube_static_friction": 0.9686956521739131,
+        "cube_dynamic_friction": 0.9686956521739131,
+        "finger_static_friction": 0.2,
+        "finger_dynamic_friction": 0.2
+      },
+      {
+        "mass_kg": 0.1,
+        "cube_static_friction": 0.9217391304347826,
+        "cube_dynamic_friction": 0.9217391304347826,
+        "finger_static_friction": 0.2,
+        "finger_dynamic_friction": 0.2
+      },
+      {
+        "mass_kg": 0.25,
+        "cube_static_friction": 0.7260869565217392,
+        "cube_dynamic_friction": 0.7260869565217392,
+        "finger_static_friction": 0.2,
+        "finger_dynamic_friction": 0.2
+      },
+      {
+        "mass_kg": 0.5,
+        "cube_static_friction": 0.4,
+        "cube_dynamic_friction": 0.4,
+        "finger_static_friction": 0.2,
+        "finger_dynamic_friction": 0.2
+      }
+    ],
+    "note": "Mass and surface friction BOTH change: heavier cubes have lower cube friction. Finger friction is also reduced. This is a combined weight/friction stress test, not isolated proof of weight adaptation."
+  },
+  "training_stage": "hold_strength",
+  "checkpoint_contents": "model weights only; continuation restarts Adam and simulation",
+  "status": "complete",
+  "exit_code": 0
+}

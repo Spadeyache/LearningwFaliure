@@ -1,0 +1,45 @@
+{
+  "recovery": {
+    "retries": 2,
+    "replaced_indices": [
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      [
+        4
+      ]
+    ],
+    "genuine_contacts": true,
+    "elapsed_steps_zero": true,
+    "persistent_failure_rejected": true
+  },
+  "cpu_stress": {
+    "resets": 25,
+    "robots": 1,
+    "robot_preparations": 25,
+    "recovered": []
+  },
+  "gpu_stress": {
+    "resets": 400,
+    "robots": 60,
+    "robot_preparations": 24000,
+    "recovered": []
+  },
+  "continuation": {
+    "output": "/home/ubuntu/faliure/run/diagnosis/hold-reset-20261008/continuation/20261008T185950-71be3453",
+    "source": "/home/ubuntu/faliure/runs/learning/20261008T183327-ffbcabfe/ckpt_126.pt",
+    "source_sha256": "d77899f57fd11f2e1a576e2bc8fed61cde0bb728d4ab0b993d3d6cd1f2417697",
+    "source_unchanged": true,
+    "movement_exact": true,
+    "strength_change_squared": 0.004080469659939467
+  }
+}

@@ -1,0 +1,336 @@
+{
+  "physx_cpu": {
+    "materials": {
+      "materials": [
+        {
+          "mass_kg": 0.03999999910593033,
+          "cube_coefficient": 1.0
+        },
+        {
+          "mass_kg": 0.06400000303983688,
+          "cube_coefficient": 0.9686956482089084
+        },
+        {
+          "mass_kg": 0.10000000149011612,
+          "cube_coefficient": 0.9217391284911529
+        },
+        {
+          "mass_kg": 0.25,
+          "cube_coefficient": 0.7260869565217392
+        },
+        {
+          "mass_kg": 0.5,
+          "cube_coefficient": 0.4
+        }
+      ],
+      "observation_count": 45,
+      "hidden_from_policy": true,
+      "native_compatibility": true,
+      "false_weight_does_not_change_materials": true
+    },
+    "holds": [
+      {
+        "masses_kg": [
+          0.03999999910593033
+        ],
+        "cap_n": 7.0,
+        "clearance_m": [
+          0.15158051252365112
+        ],
+        "grasped": [
+          true
+        ]
+      },
+      {
+        "masses_kg": [
+          0.03999999910593033
+        ],
+        "cap_n": 40.0,
+        "clearance_m": [
+          0.1515682488679886
+        ],
+        "grasped": [
+          true
+        ]
+      },
+      {
+        "masses_kg": [
+          0.5
+        ],
+        "cap_n": 7.0,
+        "clearance_m": [
+          -4.1350722312927246e-07
+        ],
+        "grasped": [
+          false
+        ]
+      },
+      {
+        "masses_kg": [
+          0.5
+        ],
+        "cap_n": 40.0,
+        "clearance_m": [
+          0.14618155360221863
+        ],
+        "grasped": [
+          true
+        ]
+      }
+    ]
+  },
+  "physx_cuda": {
+    "materials": {
+      "materials": [
+        {
+          "mass_kg": 0.03999999910593033,
+          "cube_coefficient": 1.0
+        },
+        {
+          "mass_kg": 0.06400000303983688,
+          "cube_coefficient": 0.9686956482089084
+        },
+        {
+          "mass_kg": 0.10000000149011612,
+          "cube_coefficient": 0.9217391284911529
+        },
+        {
+          "mass_kg": 0.25,
+          "cube_coefficient": 0.7260869565217392
+        },
+        {
+          "mass_kg": 0.5,
+          "cube_coefficient": 0.4
+        },
+        {
+          "mass_kg": 0.03999999910593033,
+          "cube_coefficient": 1.0
+        },
+        {
+          "mass_kg": 0.06400000303983688,
+          "cube_coefficient": 0.9686956482089084
+        },
+        {
+          "mass_kg": 0.10000000149011612,
+          "cube_coefficient": 0.9217391284911529
+        },
+        {
+          "mass_kg": 0.25,
+          "cube_coefficient": 0.7260869565217392
+        },
+        {
+          "mass_kg": 0.5,
+          "cube_coefficient": 0.4
+        }
+      ],
+      "observation_count": 45,
+      "hidden_from_policy": true,
+      "native_compatibility": true,
+      "false_weight_does_not_change_materials": true
+    },
+    "holds": [
+      {
+        "masses_kg": [
+          0.03999999910593033,
+          0.06400000303983688,
+          0.10000000149011612,
+          0.25,
+          0.5,
+          0.03999999910593033,
+          0.06400000303983688,
+          0.10000000149011612,
+          0.25,
+          0.5
+        ],
+        "cap_n": 7.0,
+        "clearance_m": [
+          0.1515270173549652,
+          0.12985067069530487,
+          0.16196653246879578,
+          0.15595611929893494,
+          -3.259629011154175e-07,
+          0.14934960007667542,
+          0.1342087984085083,
+          0.15236100554466248,
+          0.179055854678154,
+          -5.364418029785156e-07
+        ],
+        "grasped": [
+          true,
+          true,
+          true,
+          true,
+          false,
+          true,
+          true,
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "masses_kg": [
+          0.03999999910593033,
+          0.06400000303983688,
+          0.10000000149011612,
+          0.25,
+          0.5,
+          0.03999999910593033,
+          0.06400000303983688,
+          0.10000000149011612,
+          0.25,
+          0.5
+        ],
+        "cap_n": 40.0,
+        "clearance_m": [
+          0.15135422348976135,
+          0.12969323992729187,
+          0.16196268796920776,
+          0.15608009696006775,
+          0.1597043126821518,
+          0.14923042058944702,
+          0.1342465877532959,
+          0.15235981345176697,
+          0.1789105236530304,
+          0.15731586515903473
+        ],
+        "grasped": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      }
+    ],
+    "preparation": {
+      "resets": 50,
+      "robots": 60,
+      "prepared_grasps": 3000,
+      "recovered": [],
+      "complete_strong_holds": 600
+    },
+    "ppo": {
+      "output": "/home/ubuntu/faliure/run/diagnosis/mass-friction-20261008/ppo/20261008T232255-93db308e",
+      "source": "/home/ubuntu/faliure/runs/learning/20261008T210741-a1e4e677/final_ckpt.pt",
+      "source_unchanged": true,
+      "movement_unchanged": true,
+      "strength_change_squared": 0.002456350353853054,
+      "inputs": 45,
+      "actions": 5
+    }
+  },
+  "baseline_inspection": {
+    "output": "/home/ubuntu/faliure/run/diagnosis/mass-friction-20261008/baseline_inspection/20261008T232321-b0cd8e75",
+    "checkpoint": "/home/ubuntu/faliure/runs/learning/20261008T210741-a1e4e677/final_ckpt.pt",
+    "baseline_before_new_friction_training": true,
+    "labeled_friction_change": true,
+    "groups": [
+      {
+        "mass_kg": 0.04,
+        "reported_mass_kg": 0.04,
+        "weight_input": "true",
+        "episodes": 2,
+        "success_once_rate": 1.0,
+        "success_at_end_rate": 1.0,
+        "held_goal_once_rate": 1.0,
+        "held_goal_at_end_rate": 1.0,
+        "grasp_at_end_rate": 1.0,
+        "friction": {
+          "profile": "mass_correlated_linear",
+          "hidden_from_policy": true,
+          "cube_static_friction": 1.0,
+          "cube_dynamic_friction": 1.0,
+          "left_finger_static_friction": 0.20000000298023224,
+          "left_finger_dynamic_friction": 0.20000000298023224,
+          "right_finger_static_friction": 0.20000000298023224,
+          "right_finger_dynamic_friction": 0.20000000298023224
+        },
+        "grasp_loss_after_lift_rate": 0.0,
+        "mean_finger_force_n_while_lifted": 7.489144675731659,
+        "mean_strength_limit_n_while_lifted": 7.48585000038147,
+        "episodes_with_lifted_contact": 2
+      },
+      {
+        "mass_kg": 0.04,
+        "reported_mass_kg": 0.04,
+        "weight_input": "nominal",
+        "episodes": 2,
+        "success_once_rate": 1.0,
+        "success_at_end_rate": 1.0,
+        "held_goal_once_rate": 1.0,
+        "held_goal_at_end_rate": 1.0,
+        "grasp_at_end_rate": 1.0,
+        "friction": {
+          "profile": "mass_correlated_linear",
+          "hidden_from_policy": true,
+          "cube_static_friction": 1.0,
+          "cube_dynamic_friction": 1.0,
+          "left_finger_static_friction": 0.20000000298023224,
+          "left_finger_dynamic_friction": 0.20000000298023224,
+          "right_finger_static_friction": 0.20000000298023224,
+          "right_finger_dynamic_friction": 0.20000000298023224
+        },
+        "grasp_loss_after_lift_rate": 0.0,
+        "mean_finger_force_n_while_lifted": 7.489144675731659,
+        "mean_strength_limit_n_while_lifted": 7.48585000038147,
+        "episodes_with_lifted_contact": 2
+      },
+      {
+        "mass_kg": 0.5,
+        "reported_mass_kg": 0.5,
+        "weight_input": "true",
+        "episodes": 2,
+        "success_once_rate": 1.0,
+        "success_at_end_rate": 0.0,
+        "held_goal_once_rate": 1.0,
+        "held_goal_at_end_rate": 0.0,
+        "grasp_at_end_rate": 0.0,
+        "friction": {
+          "profile": "mass_correlated_linear",
+          "hidden_from_policy": true,
+          "cube_static_friction": 0.4000000059604645,
+          "cube_dynamic_friction": 0.4000000059604645,
+          "left_finger_static_friction": 0.20000000298023224,
+          "left_finger_dynamic_friction": 0.20000000298023224,
+          "right_finger_static_friction": 0.20000000298023224,
+          "right_finger_dynamic_friction": 0.20000000298023224
+        },
+        "grasp_loss_after_lift_rate": 1.0,
+        "mean_finger_force_n_while_lifted": 7.851352667808532,
+        "mean_strength_limit_n_while_lifted": 7.839680385589599,
+        "episodes_with_lifted_contact": 2
+      },
+      {
+        "mass_kg": 0.5,
+        "reported_mass_kg": 0.04,
+        "weight_input": "nominal",
+        "episodes": 2,
+        "success_once_rate": 1.0,
+        "success_at_end_rate": 0.0,
+        "held_goal_once_rate": 1.0,
+        "held_goal_at_end_rate": 0.0,
+        "grasp_at_end_rate": 0.0,
+        "friction": {
+          "profile": "mass_correlated_linear",
+          "hidden_from_policy": true,
+          "cube_static_friction": 0.4000000059604645,
+          "cube_dynamic_friction": 0.4000000059604645,
+          "left_finger_static_friction": 0.20000000298023224,
+          "left_finger_dynamic_friction": 0.20000000298023224,
+          "right_finger_static_friction": 0.20000000298023224,
+          "right_finger_dynamic_friction": 0.20000000298023224
+        },
+        "grasp_loss_after_lift_rate": 1.0,
+        "mean_finger_force_n_while_lifted": 7.671984136104584,
+        "mean_strength_limit_n_while_lifted": 7.644911170005798,
+        "episodes_with_lifted_contact": 2
+      }
+    ]
+  }
+}

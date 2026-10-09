@@ -1,0 +1,44 @@
+{
+  "seed": 1,
+  "training_stage": "hold_strength",
+  "total_timesteps": 6000,
+  "num_envs": 60,
+  "num_steps": 50,
+  "num_minibatches": 10,
+  "num_eval_envs": 10,
+  "num_eval_steps": 50,
+  "eval_freq": 2,
+  "learning_rate": 0.0001,
+  "gamma": 0.8,
+  "gae_lambda": 0.9,
+  "update_epochs": 1,
+  "clip_coef": 0.2,
+  "ent_coef": 0.0,
+  "vf_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "target_kl": 0.1,
+  "finite_horizon_gae": true,
+  "partial_reset": false,
+  "eval_partial_reset": false,
+  "control_mode": "pd_ee_delta_pos",
+  "sim_backend": "physx_cuda",
+  "masses_kg": [
+    0.04,
+    0.064,
+    0.1,
+    0.25,
+    0.5
+  ],
+  "goal_clearance_m": [
+    0.1,
+    0.3
+  ],
+  "grip_force_limits_n": [
+    0.25,
+    40.0
+  ],
+  "grip_force_cost": 0.05,
+  "initialize_from_pretrained": true,
+  "checkpoint": "latest",
+  "run_root": "/home/ubuntu/faliure/run/diagnosis/branch-reset-20261008/physx_cuda"
+}

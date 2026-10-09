@@ -1,0 +1,41 @@
+/home/ubuntu/faliure/.venv/lib/python3.10/site-packages/sapien/_vulkan_tricks.py:100: UserWarning: Failed to find glvnd ICD file. This is probably due to an incorrect or partial installation of the NVIDIA driver. SAPIEN will attempt to provide an ICD file anyway but it may not work.
+  warn(
+WEIGHT CONVERSION PASSED
+Grip-strength branch training (hold_strength): /home/ubuntu/faliure/run/diagnosis/branch-reset-20261008/physx_cpu/20261008T175020-5a607c49
+Running training
+####
+args.num_iterations=3 args.num_envs=1 args.num_eval_envs=1
+args.minibatch_size=25 args.batch_size=50 args.update_epochs=2
+####
+Epoch: 1, global_step=0
+Evaluating
+Evaluated 50 steps resulting in 1 episodes
+eval_success_once_mean=1.0
+eval_return_mean=48.8048210144043
+eval_episode_len_mean=50.0
+eval_reward_mean=0.9760963916778564
+eval_success_at_end_mean=1.0
+model saved to /home/ubuntu/faliure/run/diagnosis/branch-reset-20261008/physx_cpu/20261008T175020-5a607c49/ckpt_1.pt
+SPS: 28
+Epoch: 2, global_step=50
+SPS: 44
+Epoch: 3, global_step=100
+Evaluating
+Evaluated 50 steps resulting in 1 episodes
+eval_success_once_mean=1.0
+eval_return_mean=48.807464599609375
+eval_episode_len_mean=50.0
+eval_reward_mean=0.976149320602417
+eval_success_at_end_mean=1.0
+model saved to /home/ubuntu/faliure/run/diagnosis/branch-reset-20261008/physx_cpu/20261008T175020-5a607c49/ckpt_3.pt
+SPS: 40
+model saved to /home/ubuntu/faliure/run/diagnosis/branch-reset-20261008/physx_cpu/20261008T175020-5a607c49/final_ckpt.pt
+CPU STRENGTH PPO PASSED
+Traceback (most recent call last):
+  File "/home/ubuntu/faliure/learning-withoutCLI/checks/check_strength_branch.py", line 124, in <module>
+    if __name__=='__main__':main()
+  File "/home/ubuntu/faliure/learning-withoutCLI/checks/check_strength_branch.py", line 117, in main
+    result['gpu_reset']=check_gpu_reset();print('GPU RESET SENSOR ISOLATION PASSED',flush=True)
+  File "/home/ubuntu/faliure/learning-withoutCLI/checks/check_strength_branch.py", line 55, in check_gpu_reset
+    assert torch.equal(normal_forces(env)[others],before[others])
+AssertionError

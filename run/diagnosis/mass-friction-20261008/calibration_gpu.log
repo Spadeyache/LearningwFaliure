@@ -1,0 +1,5 @@
+/home/ubuntu/faliure/.venv/lib/python3.10/site-packages/sapien/_vulkan_tricks.py:100: UserWarning: Failed to find glvnd ICD file. This is probably due to an incorrect or partial installation of the NVIDIA driver. SAPIEN will attempt to provide an ICD file anyway but it may not work.
+  warn(
+{"backend": "physx_cuda", "mass": [0.03999999910593033, 0.5], "cap": 7.0, "clearance": [0.15152718126773834, -4.023313522338867e-07], "grasp": [true, false], "force": [[6.998427867889404, 6.999631881713867], [0.0, 0.0]]}
+{"backend": "physx_cuda", "mass": [0.03999999910593033, 0.5], "cap": 20.0, "clearance": [0.15140798687934875, -7.748603820800781e-07], "grasp": [true, false], "force": [[15.90784740447998, 16.41779327392578], [0.0, 0.0]]}
+{"backend": "physx_cuda", "mass": [0.03999999910593033, 0.5], "cap": 40.0, "clearance": [0.15135449171066284, -7.264316082000732e-07], "grasp": [true, false], "force": [[27.75179100036621, 27.75391387939453], [0.0, 0.0]]}

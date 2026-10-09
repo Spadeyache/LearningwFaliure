@@ -1,0 +1,77 @@
+{
+  "episodes": [
+    {
+      "mean_finger_force_n_while_lifted": 17.57055050532023,
+      "mean_strength_limit_n_while_lifted": 18.915205213758682,
+      "lifted_contact_steps": 45,
+      "grasp_loss_after_lift": false,
+      "mass_kg": 0.04,
+      "reported_mass_kg": 0.04,
+      "weight_input": "true",
+      "seed": 1000,
+      "reset_hash": "64a438d6f8357e094cc8c2d5b705ea9cca6a3b9c6186629b9d5139150b6b6646",
+      "mass_seen_in_training": true,
+      "episode_return": 42.604698196053505,
+      "success_once": true,
+      "success_at_end": true,
+      "held_goal_once": true,
+      "held_goal_at_end": true,
+      "grasp_at_end": true,
+      "final_goal_distance_m": 0.008789731189608574,
+      "final_clearance_m": 0.17665287852287292
+    },
+    {
+      "mean_finger_force_n_while_lifted": 18.94605656557305,
+      "mean_strength_limit_n_while_lifted": 18.984596429869185,
+      "lifted_contact_steps": 43,
+      "grasp_loss_after_lift": false,
+      "mass_kg": 0.5,
+      "reported_mass_kg": 0.5,
+      "weight_input": "true",
+      "seed": 1000,
+      "reset_hash": "64a438d6f8357e094cc8c2d5b705ea9cca6a3b9c6186629b9d5139150b6b6646",
+      "mass_seen_in_training": true,
+      "episode_return": 40.92354100942612,
+      "success_once": true,
+      "success_at_end": true,
+      "held_goal_once": true,
+      "held_goal_at_end": true,
+      "grasp_at_end": true,
+      "final_goal_distance_m": 0.006269463803619146,
+      "final_clearance_m": 0.1746899038553238
+    }
+  ],
+  "grouped_rates": [
+    {
+      "mass_kg": 0.04,
+      "reported_mass_kg": 0.04,
+      "weight_input": "true",
+      "episodes": 1,
+      "success_once_rate": 1.0,
+      "success_at_end_rate": 1.0,
+      "held_goal_once_rate": 1.0,
+      "held_goal_at_end_rate": 1.0,
+      "grasp_at_end_rate": 1.0,
+      "grasp_loss_after_lift_rate": 0.0,
+      "mean_finger_force_n_while_lifted": 17.57055050532023,
+      "mean_strength_limit_n_while_lifted": 18.915205213758682,
+      "episodes_with_lifted_contact": 1
+    },
+    {
+      "mass_kg": 0.5,
+      "reported_mass_kg": 0.5,
+      "weight_input": "true",
+      "episodes": 1,
+      "success_once_rate": 1.0,
+      "success_at_end_rate": 1.0,
+      "held_goal_once_rate": 1.0,
+      "held_goal_at_end_rate": 1.0,
+      "grasp_at_end_rate": 1.0,
+      "grasp_loss_after_lift_rate": 0.0,
+      "mean_finger_force_n_while_lifted": 18.94605656557305,
+      "mean_strength_limit_n_while_lifted": 18.984596429869185,
+      "episodes_with_lifted_contact": 1
+    }
+  ],
+  "interpretation": "Compare paired true vs nominal weight inputs. A higher true-input rate supports use of weight information; equality does not prove adaptation. Force statistics are conditional on lifted contact, not proof of adaptation. Grasp loss can include opening or dropping, not confirmed slipping. No memory or weight estimation is implemented."
+}

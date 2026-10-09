@@ -17,11 +17,42 @@ Check artifacts stay under `runs/checks/`.
 
 - `lift_task.py`: cube mass/inertia, floating goal, measurements and reward.
 - `grip_controller.py`: native Panda finger opening plus a chosen motor force limit.
-- `ppo.py`: actor/critic and conversion of existing models into the larger network.
+- `ppo.py`: one combined policy with frozen movement and an independent strength branch.
+- `hold_task.py`: real held-object practice; arm stays still while strength is learned.
 - `train_ppo.py`: warm-start the latest model and run the pinned ManiSkill PPO loop.
 - `inspect_policy.py`: run without learning, log signals and compare weight estimates.
 - `checks/`: optional checks of controllers, rewards, PPO updates and loading.
 - `examples/`: simulator starter, original ManiSkill references and earlier experiments.
+
+## One policy, two branches: preserve what the model learned
+
+The existing movement/opening actor is copied from your checkpoint and frozen.
+The strength branch gets an independent copy of those trained layers; only its
+fifth output is used. The copies share no parameters. Before training, converted
+45-input/five-action checkpoints produce exactly the same deterministic outputs.
+PPO updates the strength branch and critic, while the movement network and its
+saved exploration values remain unchanged. Only strength is sampled during
+training; PPO likelihood, entropy and KL calculations use that action alone.
+Your original checkpoint files are never overwritten.
+
+`train_ppo.py` now defaults to `training_stage="hold_strength"`. Each episode
+begins with the cube physically between closed fingers and a brief strong-grip
+settling phase. No attachment or lock is used. These preparation steps are not
+PPO experience. The episode then holds the arm at its initial position and lets
+the strength action determine whether the cube stays held. Warm-up affects the
+whole simulator, so this stage requires synchronized full resets and
+`partial_reset=False`, including evaluation.
+
+Later, `training_stage="carry_strength"` uses the original floating-goal carrying
+task, with movement/opening still frozen and PPO still optimizing only strength.
+Preserved weights do not guarantee identical physical trajectories: new strength
+changes forces, the observations, and therefore later actions. This stage does
+not repair an approach policy that misses the cube.
+
+Inspection defaults to `inspection_stage="carry"` to test the combined policy.
+Set `inspection_stage="hold_strength"` to view the strength practice task instead.
+The same checkpoint supports both. Training evaluation measures its selected
+training stage; hold success is not evidence of successful reaching/carrying.
 
 ## Inputs: retain the previous 43 and append two forces
 
@@ -43,7 +74,11 @@ Check artifacts stay under `runs/checks/`.
 Object weight remains at index 42. The new forces are at indices 43 and 44.
 Force observations are measured contact forces projected along each finger's
 opening direction, with negative compression clamped to zero. They are neither
-requested motor limits nor the grasp detector's binary flags.
+requested motor limits nor the grasp detector's binary flags. Immediately after
+a carry-task reset, contact buffers can still describe the previous episode.
+Reset robots now report zero force and not grasped until fresh physics data is
+available; active robots keep their readings. Holding practice steps real physics
+before returning its first observation, so its initial measured forces are real.
 
 ## Actions: retain the previous four and append strength
 
@@ -102,7 +137,8 @@ requests the maximum allowed strength, with exploration. It must learn during PP
 The new motor cap and reward change physical behavior, even if copied actions match.
 
 The official 42-input/four-action model is also convertible; its added weight
-and force columns start at zero. Existing 45-input/five-action models load directly.
+and force columns start at zero. Existing shared 45-input/five-action models are copied into the two branches;
+branched models resume both branches directly.
 Old custom 21-input/seven-action policies are incompatible.
 
 Continuation loads model weights but restarts Adam and simulation. It is
@@ -126,7 +162,7 @@ These are starting choices, not tuned or proven settings.
 
 PPO remains the pinned ManiSkill baseline at commit
 `a4a4f9272ad64b1564035874b605ceb687b63ed8`: three 256-unit tanh layers per network,
-learned Gaussian exploration, clipping actions before physics, and finite-horizon
+Gaussian exploration of strength only, clipping actions before physics, and finite-horizon
 GAE. The source baseline is preserved unchanged; the runtime replaces the model
 and task integration. Published checkpoint metadata does not establish the exact
 original training seed, budget or hyperparameter overrides.
@@ -143,7 +179,9 @@ Outputs include:
   and requested strength during lifted contact.
 - `success_rates.png`: success rates by physical mass and reported weight.
 - `grip_strength_by_mass.png`: measured force and requested limit by mass.
-- `steps.jsonl`: all actual measurements, fed inputs, actions and reward parts.
+- `steps.jsonl`: actual measurements, fed inputs, policy actions, applied actions
+  and reward parts. During hold practice the fixed controller supplies movement/
+  opening, so its applied action differs from the four ignored policy outputs.
 - Two camera GIFs and initial/final/closest-held-goal PNGs for the first attempt
   in **both** conditions at each mass.
 - Per-attempt plots of rewards, forces, requested limits and cube position relative
@@ -165,14 +203,15 @@ The original pretrained runner uses the preserved v1 weighted task in
 `examples/maniskill_pick_cube/weighted_lift_v1.py`, with its original controller
 and reward. It is a separate reference, not an evaluation of this new controller.
 
-## Verification of this extension
+## Historical verification of the original extension
 
 CPU reward/controller checks and a 150-step PPO run passed. A 6,000-step GPU
 run with 60 robots passed, including independent limits and partial-reset isolation.
 Both added force columns and the strength output changed during PPO updates,
 and the final model reloaded exactly. Six inspection attempts exercised raw logs,
 new force plots, rewards, and both cameras. These are integration checks; the
-long fine-tuning budget has not been run and learned adaptation is unproven.
+early short runs did not establish learned adaptation. Subsequent full runs and
+the diagnosis still did not establish a benefit from true weight input.
 
 A separate fixed-position hold diagnostic used one matched starting seed.
 At a 1 N per-finger motor limit, a 40 g cube stayed lifted while a 500 g cube
@@ -184,3 +223,99 @@ physically stable holds can fall below that binary detector threshold.
 Artifacts: `runs/checks/grip_extension/calibration/20261008T031936-anchored/`,
 `runs/checks/grip_extension/gpu_training/20261008T031725-a918879c/`, and
 `runs/checks/grip_extension/inspection/20261008T031931-9f92e11a/`.
+
+
+## Branch and reset verification
+
+Run `python learning-withoutCLI/checks/check_strength_branch.py` for checks of:
+
+- Exact movement/output preservation at conversion and after CPU/GPU PPO updates.
+- Independent strength learning, strength-only likelihoods and checkpoint reload.
+- Full and partial GPU resets, retaining contact readings and motor caps of active robots.
+- Genuine initial grasps and physical dropping/holding under weak/strong grip limits.
+
+Implementation verification and short training artifacts are saved under
+`run/diagnosis/branch-reset-20261008/`. Diagnostic models are excluded from
+`checkpoint="latest"`; full runs still save under `runs/learning/`.
+These checks establish working integration, not learned weight adaptation.
+
+## Recovering a failed hold preparation
+
+Holding practice must establish real airborne finger contact before returning
+an episode. Preparation now tries ten settling steps first, allows ten more if
+contact is missing, and then repositions only the failed cubes for bounded
+retries. It still aborts with the failed robot indices if no valid grasp can be
+prepared after 50 steps. These transitions do not enter PPO's rollout or the
+50-step episode limit; cubes are never attached to the hand.
+
+`python learning-withoutCLI/checks/check_hold_reset.py` checks recovery from a
+deliberately misplaced heavy cube, rejection of a persistent failure, repeated
+CPU/GPU resets, and continuation from the saved update-126 model. Evidence is
+saved under `run/diagnosis/hold-reset-20261008/`.
+
+The run `20261008T183327-ffbcabfe` saved `ckpt_126.pt` at 375,000 transitions
+before preparation failed. `checkpoint="latest"` selects completed runs, so
+use this checkpoint explicitly to preserve that progress. To continue for the
+remaining 627,000 transitions of the original 1,002,000-transition budget:
+
+```bash
+python - <<'PYTHON'
+import sys
+sys.path.insert(0, "learning-withoutCLI")
+from train_ppo import main
+main({
+    "checkpoint": "runs/learning/20261008T183327-ffbcabfe/ckpt_126.pt",
+    "total_timesteps": 627_000,
+})
+PYTHON
+```
+
+This loads the saved movement/strength/critic weights into a new run using the
+repaired source. Adam's state, random generators, simulation, and displayed
+update counter restart; model progress is retained. Do not execute the old
+run's frozen `ppo_runtime.py`, which retains its original reset implementation.
+
+## Hidden mass-dependent friction experiment
+
+New training deliberately changes **both physical mass and surface friction**.
+The cube's static and dynamic friction coefficients decrease linearly from
+`1.0` at 40 g to `0.4` at 500 g, clamped to those bounds outside that mass range.
+Both Panda finger coefficients are set to `0.2` instead of the native `2.0`.
+The cube schedule uses actual physical mass; falsely reporting 40 g never
+changes the physical material. These coefficients are hidden from the policy:
+the model still has 45 inputs and five actions, with movement/opening frozen.
+
+| Actual cube mass | Cube static/dynamic coefficient | Finger static/dynamic coefficient |
+|---|---|---|
+| 40 g | 1.000 | 0.200 |
+| 64 g | 0.969 | 0.200 |
+| 100 g | 0.922 | 0.200 |
+| 250 g | 0.726 | 0.200 |
+| 500 g | 0.400 | 0.200 |
+
+This is an artificial combined weight/friction challenge. Success does not
+isolate adaptation to weight alone, and existing pre-grasp pickup failures may
+remain. Collision geometry, masses/inertias, gravity and motor strength bounds
+retain their previous definitions. Static/dynamic material coefficients are
+both logged; they are not the same quantity as measured contact force.
+
+`train_ppo.py` retains the `0.10` force cost and 150,000-step trial, starts from
+the latest completed checkpoint, and writes the friction configuration, mass
+mapping and experiment note into each new run's manifest. GPU materials are
+assigned before physics initialization, separately for each robot's fixed mass.
+CPU inspection updates cube material when actual mass changes at reset.
+
+Inspection normally matches the training manifest's friction. Old checkpoints
+without these fields retain their original native materials. To evaluate an
+old model under the new challenge, set `friction_override` to the friction
+configuration explicitly; the inspection manifest flags that physics differs
+from training. The per-step logs, episode/group summaries, GIF/PNG overlays and
+aggregate plots all identify the changing friction. The original baseline
+inspection artifacts and saved model weights are not rewritten.
+
+Run `python learning-withoutCLI/checks/check_mass_friction.py` for physical
+material checks, hidden-input checks, weak/strong hold comparisons, reset
+preparation, short PPO continuation and labeled inspection. Evidence and an
+old-policy baseline in the new physics are saved under
+`run/diagnosis/mass-friction-20261008/`. Those diagnostic models are excluded
+from automatic selection of the latest main-training checkpoint.

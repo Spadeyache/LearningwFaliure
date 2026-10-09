@@ -19,11 +19,16 @@ from PIL import Image, ImageDraw
 import torch
 from mani_skill.sensors.camera import CameraConfig
 from mani_skill.utils import sapien_utils
-from lift_task import ENV_SETTINGS, HORIZON, LiftTask, ORIGIN, normal_forces, read_inputs, WEIGHT_INPUT_INDEX
+from lift_task import ENV_SETTINGS, HORIZON, LiftTask, ORIGIN, normal_forces, read_inputs, WEIGHT_INPUT_INDEX, friction_settings, friction_experiment
 from train_ppo import load_checkpoint, latest_checkpoint
+from hold_task import HoldStrengthTask
 
 ROOT = Path(__file__).resolve().parent.parent
 SETTINGS = {
+    "inspection_stage": "carry", # Carry with the combined policy; use "hold_strength" for the practice task.
+    # None matches checkpoint training friction. Override with a friction-settings
+    # dict to stress-test an older checkpoint; artifacts explicitly note the change.
+    "friction_override": None,
     "checkpoint": None,          # Newest completed 45-input/five-action grip-aware model.
     "seed": 1000,
     "masses_kg": ENV_SETTINGS["masses_kg"],  # Match the fine-tuning range; edit for heavier stress tests.
@@ -49,6 +54,10 @@ class InspectionTask(LiftTask):
                                        512, 512, 1, .01, 100)]
 
 
+class HoldInspectionTask(HoldStrengthTask, InspectionTask):
+    """The same two viewing cameras, applied to physical strength practice."""
+
+
 def numbers(value):
     return value.detach().cpu().reshape(-1).tolist()
 
@@ -56,7 +65,11 @@ def numbers(value):
 def policy_inputs(vector, mode, gravity, nominal_mass):
     result = vector.clone()
     if mode == "nominal":
-        result[:, WEIGHT_INPUT_INDEX] = nominal_mass * gravity
+        # Match the simulator's float32 multiply; Python double multiplication
+        # previously introduced a one-ULP difference even for the same 40 g mass.
+        mass = torch.as_tensor(nominal_mass, dtype=result.dtype, device=result.device)
+        gravity = torch.as_tensor(gravity, dtype=result.dtype, device=result.device)
+        result[:, WEIGHT_INPUT_INDEX] = mass * gravity
     elif mode != "true":
         raise ValueError("Choose true or nominal weight input")
     return result
@@ -64,7 +77,7 @@ def policy_inputs(vector, mode, gravity, nominal_mass):
 
 def snapshot(env, obs, info):
     inputs, vector = read_inputs(env, obs)
-    return dict(cube_in_tcp_position_m=numbers((env.agent.tcp_pose.inv() * env.cube.pose).p), inputs={name: numbers(value) for name, value in inputs.items()}, input_vector=numbers(vector),
+    return dict(friction=env.friction_details(), cube_in_tcp_position_m=numbers((env.agent.tcp_pose.inv() * env.cube.pose).p), inputs={name: numbers(value) for name, value in inputs.items()}, input_vector=numbers(vector),
                 normal_forces_n=numbers(normal_forces(env)), mass_kg=float(env.cube.mass.item()),
                 finger_width_m=float(env.agent.robot.get_qpos()[:, -2:].sum().item()),
                 cube_pose= numbers(env.cube.pose.raw_pose), goal_position_m=numbers(env.goal_site.pose.p),
@@ -78,10 +91,11 @@ def snapshot(env, obs, info):
 def frame(env, state, step, camera, mode, reported_mass):
     image = Image.fromarray(env.render_rgb_array(camera_name=camera)[0].cpu().numpy().astype(np.uint8))
     draw = ImageDraw.Draw(image)
-    draw.rectangle((0, 0, image.width, 90), fill="black")
+    draw.rectangle((0, 0, image.width, 110), fill="black")
     draw.multiline_text((5, 5), f"WEIGHTED MANISKILL PPO | step {step} | mass {state['mass_kg']:.3f} kg\n"
                         f"Input {mode} | reported mass {reported_mass:.3f} kg\n"
                         f"Motor limit {state['grip_limit_n']:.2f} N/finger\n"
+                        f"Friction cube {state['friction']['cube_static_friction']:.3f} | fingers {state['friction']['left_finger_static_friction']:.3f}\n"
                         f"Grasp {state['is_grasped']} | held goal {state['held_goal_success']}\n"
                         f"Goal distance {state['goal_distance_m']:.3f} m | clearance {state['clearance_m']:.3f} m", fill="white")
     return image
@@ -117,10 +131,22 @@ def plot(states, folder, frequency, mode, reported_mass):
     for axis in axes[2]:
         axis.set_xlabel("Simulation seconds")
     fig.suptitle(f"Actual {states[0]['mass_kg']*1000:.0f} g | reported {reported_mass*1000:.0f} g ({mode}) — inference only")
-    fig.tight_layout()
+    fig.text(.5, .01, f"Friction profile: {states[0]['friction']['profile']} | "
+             f"cube coefficient {states[0]['friction']['cube_static_friction']:.3f} | "
+             f"finger coefficient {states[0]['friction']['left_finger_static_friction']:.3f}", ha="center", fontsize=8)
+    fig.tight_layout(rect=(0,.035,1,.96))
     fig.savefig(folder / "measurements.png", dpi=150)
     plt.close(fig)
 
+
+
+def friction_caption(settings):
+    config = settings["_friction_experiment"]["settings"]
+    if config["friction_profile"] == "native":
+        return "Native friction: no mass-dependent material changes."
+    light, heavy = config["cube_friction_range"]
+    return (f"MASS + FRICTION BOTH VARY: cube coefficient {light:g} -> {heavy:g}; "
+            f"finger coefficient {config['finger_friction_coefficient']:g}. Hidden from policy.")
 
 
 def plot_success_rates(groups, settings, output):
@@ -149,11 +175,15 @@ def plot_success_rates(groups, settings, output):
     axis.grid(axis="y", alpha=.2)
     axis.set_axisbelow(True)
     axis.legend()
-    fig.suptitle("Weight mismatch stress test — same trained policy and matched starts")
+    changing = settings["_friction_experiment"]["changes_with_actual_mass"]
+    task = "pre-grasped holding" if settings["inspection_stage"] == "hold_strength" else "pickup and carrying"
+    title = "Mass + friction stress test" if changing else "Weight mismatch stress test"
+    fig.suptitle(f"{title} — {task}, matched starts")
     trained = settings["_training_masses_kg"]
     fig.text(.5, .015, "Training masses: " + ", ".join(f"{m*1000:.0f} g" for m in trained)
              + "; masses outside this list test performance beyond training.", ha="center", fontsize=9)
-    fig.tight_layout(rect=(0, .05, 1, .96))
+    fig.text(.5, .045, friction_caption(settings), ha="center", fontsize=8)
+    fig.tight_layout(rect=(0, .08, 1, .96))
     fig.savefig(output / "success_rates.png", dpi=150)
     plt.close(fig)
 
@@ -173,16 +203,21 @@ def plot_grip_strength(groups, settings, output):
             axis.legend()
     axes[0].set_title("Measured compression during lifted contact")
     axes[1].set_title("Requested motor limit during lifted contact")
-    fig.suptitle("Grip-aware policy: force usage alongside success")
+    title = "Grip force: mass and hidden friction both vary" if settings["_friction_experiment"]["changes_with_actual_mass"] else "Grip-aware policy: force usage alongside success"
+    fig.suptitle(title)
     fig.text(.5, .01, "Each point averages qualifying episodes; missing points mean no lifted contact. Compare success rates too.",
              ha="center", fontsize=8)
-    fig.tight_layout(rect=(0,.05,1,.92))
+    fig.text(.5, .045, friction_caption(settings), ha="center", fontsize=8)
+    fig.tight_layout(rect=(0,.09,1,.92))
     fig.savefig(output / "grip_strength_by_mass.png", dpi=150)
     plt.close(fig)
 
 
 def main(settings=None):
     settings = {**SETTINGS, **(settings or {})}
+    if settings['inspection_stage'] not in ('carry', 'hold_strength'):
+        raise ValueError('Choose carry or hold_strength for inspection_stage')
+    task_class = HoldInspectionTask if settings['inspection_stage'] == 'hold_strength' else InspectionTask
     for key in ("episodes_per_mass", "episode_steps"):
         if not isinstance(settings[key], int) or settings[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
@@ -204,19 +239,26 @@ def main(settings=None):
     checkpoint = Path(checkpoint).resolve()
     torch.set_num_threads(4)
     agent, saved = load_checkpoint(checkpoint)
+    trained_friction = friction_settings(saved["settings"])
+    override = settings["friction_override"]
+    if override is not None and not isinstance(override, dict):
+        raise ValueError("friction_override must be None or a friction-settings dictionary")
+    active_friction = trained_friction if override is None else friction_settings(override)
+    settings["_friction_experiment"] = friction_experiment(active_friction, settings["masses_kg"])
     output = Path(settings["output_root"]) / (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8])
     output.mkdir(parents=True, exist_ok=False)
     outcomes, paired_starts = [], {}
     manifest = dict(artifact_origin=ORIGIN + "_inspection", checkpoint=str(checkpoint),
                     checkpoint_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(), settings=settings,
-                    training_manifest=saved, status="running")
+                    training_manifest=saved, friction_experiment=settings["_friction_experiment"],
+                    friction_changed_from_training=active_friction != trained_friction, status="running")
     manifest_path = output / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2)+"\n")
     try:
         for mass in settings["masses_kg"]:
-            env = InspectionTask(masses_kg=saved["settings"]["masses_kg"], goal_clearance_m=saved["settings"]["goal_clearance_m"],
+            env = task_class(masses_kg=saved["settings"]["masses_kg"], goal_clearance_m=saved["settings"]["goal_clearance_m"],
                                  grip_force_limits_n=saved["settings"]["grip_force_limits_n"],
-                                 grip_force_cost=saved["settings"]["grip_force_cost"])
+                                 grip_force_cost=saved["settings"]["grip_force_cost"], **active_friction)
             gravity = float(torch.as_tensor(env.scene.px.get_config().gravity).norm())
             try:
                 for mode in settings["weight_inputs"]:
@@ -226,11 +268,15 @@ def main(settings=None):
                         torch.manual_seed(seed)
                         obs, info = env.reset(seed=seed, options={"mass_kg": mass, "reconfigure": True})
                         initial = snapshot(env, obs, info)
-                        # Match all 42 original inputs across conditions and masses.
+                        # Carry starts match across masses too. In hold practice,
+                        # settling depends on physical mass, so match true/nominal
+                        # starts within each mass rather than demanding identical
+                        # equilibrium poses across different physical weights.
                         reset_hash = hashlib.sha256(np.asarray(initial["input_vector"][:42], dtype=np.float32).tobytes()).hexdigest()
-                        if seed in paired_starts and paired_starts[seed] != reset_hash:
+                        pair_key = (mass, seed) if settings['inspection_stage'] == 'hold_strength' else seed
+                        if pair_key in paired_starts and paired_starts[pair_key] != reset_hash:
                             raise AssertionError("Reset states differ; weight comparison would not be controlled")
-                        paired_starts[seed] = reset_hash
+                        paired_starts[pair_key] = reset_hash
                         folder = output / f"mass_{mass:.3f}" / mode / f"episode_{episode+1:02d}"
                         folder.mkdir(parents=True)
                         record = mode in settings["record_weight_inputs"] and episode < settings["record_episodes_per_mass"]
@@ -251,7 +297,9 @@ def main(settings=None):
                                     raise AssertionError("Reward components do not match simulator reward")
                                 total += float(reward.item())
                                 log.write(json.dumps(dict(step=step, reported_mass_kg=reported_mass, policy_inputs=numbers(fed), raw_action=numbers(raw),
-                                                          action=numbers(action), reward=float(reward.item()), state=state,
+                                                          action=numbers(action),
+                                                          applied_action=numbers(getattr(env, "last_applied_action", action)),
+                                                          reward=float(reward.item()), state=state,
                                                           environment_terminated=bool(terminated.item()), evaluation_time_limit=step==settings["episode_steps"]), allow_nan=False)+"\n")
                                 states.append(state)
                                 if record:
@@ -273,7 +321,7 @@ def main(settings=None):
                                          for a,b in zip(states[1:], states[2:]))
                         outcome = dict(mean_finger_force_n_while_lifted=mean_force,
                                        mean_strength_limit_n_while_lifted=mean_limit, lifted_contact_steps=len(held_states),
-                                       grasp_loss_after_lift=grasp_loss,mass_kg=mass, reported_mass_kg=reported_mass, weight_input=mode, seed=seed, reset_hash=reset_hash,
+                                       friction=initial["friction"], grasp_loss_after_lift=grasp_loss,mass_kg=mass, reported_mass_kg=reported_mass, weight_input=mode, seed=seed, reset_hash=reset_hash,
                                        mass_seen_in_training=any(np.isclose(mass,m) for m in saved["settings"]["masses_kg"]),
                                        episode_return=total, success_once=any(s["success"] for s in states[1:]),
                                        success_at_end=states[-1]["success"], held_goal_once=any(s["held_goal_success"] for s in states[1:]),
@@ -292,14 +340,16 @@ def main(settings=None):
                                       ("success_once","success_at_end","held_goal_once","held_goal_at_end","grasp_at_end")}))
         for group in groups:
             rows = [r for r in outcomes if r["mass_kg"] == group["mass_kg"] and r["weight_input"] == group["weight_input"]]
+            group["friction"] = rows[0]["friction"]
             group["grasp_loss_after_lift_rate"] = sum(r["grasp_loss_after_lift"] for r in rows)/len(rows)
             for key in ("mean_finger_force_n_while_lifted", "mean_strength_limit_n_while_lifted"):
                 valid = [r[key] for r in rows if r[key] is not None]
                 group[key] = float(np.mean(valid)) if valid else None
             group["episodes_with_lifted_contact"] = sum(r["lifted_contact_steps"] > 0 for r in rows)
         plot_grip_strength(groups, settings, output)
-        (output / "summary.json").write_text(json.dumps(dict(episodes=outcomes, grouped_rates=groups,
-            interpretation="Compare paired true vs nominal weight inputs. A higher true-input rate supports use of weight information; equality does not prove adaptation. Force statistics are conditional on lifted contact, not proof of adaptation. Grasp loss can include opening or dropping, not confirmed slipping. No memory or weight estimation is implemented."), indent=2)+"\n")
+        (output / "summary.json").write_text(json.dumps(dict(episodes=outcomes, grouped_rates=groups, friction_experiment=settings["_friction_experiment"],
+            friction_changed_from_training=manifest["friction_changed_from_training"],
+            interpretation="Compare paired true vs nominal weight inputs. A higher true-input rate supports use of weight information; equality does not prove adaptation. Mass and friction both vary when the correlated profile is enabled; this is not isolated weight adaptation. Force statistics are conditional on lifted contact, not proof of adaptation. Grasp loss can include opening or dropping, not confirmed slipping. No memory or weight estimation is implemented."), indent=2)+"\n")
         plot_success_rates(groups, {**settings, "_training_masses_kg": saved["settings"]["masses_kg"]}, output)
         manifest["status"] = "complete"
     except BaseException:

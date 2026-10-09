@@ -22,6 +22,8 @@ def check_model():
     original=_upstream().Agent(SimpleNamespace(
         single_observation_space=SimpleNamespace(shape=(n,)),
         single_action_space=SimpleNamespace(shape=(actions,))))
+    if 'strength_mean.0.weight' in source:
+        original = Agent()
     original.load_state_dict(source)
     updated=initialize_from_pretrained(Agent(),path)
     probe=torch.randn(6,n)
@@ -104,12 +106,15 @@ def main():
     current=agent.state_dict()
     assert all(torch.isfinite(v).all() for v in current.values())
     delta=sum((current[k]-initial[k]).square().sum().item() for k in current)
-    assert delta>0 and not torch.equal(current["actor_mean.6.weight"][4],initial["actor_mean.6.weight"][4])
+    assert delta>0 and not torch.equal(current['strength_mean.6.weight'][4],initial['strength_mean.6.weight'][4])
+    for name in initial:
+        if name.startswith('actor_mean.') or name=='actor_logstd':
+            assert torch.equal(current[name],initial[name]), name
     probe=torch.randn(2,45);reloaded,_=load_checkpoint(output/"final_ckpt.pt")
     with torch.no_grad(): assert torch.equal(agent.get_action(probe,True),reloaded.get_action(probe,True))
     (output/"verification.json").write_text(json.dumps(dict(parameter_change_squared=delta,
-        force_feature_actor_norm=agent.actor_mean[0].weight[:,43:].norm().item(),
-        strength_output_change=(current["actor_mean.6.weight"][4]-initial["actor_mean.6.weight"][4]).norm().item(),
+        force_feature_actor_norm=agent.strength_mean[0].weight[:,43:].norm().item(),
+        strength_output_change=(current['strength_mean.6.weight'][4]-initial['strength_mean.6.weight'][4]).norm().item(),
         checkpoint_reload_equal=True,note="Integration verified, not learned weight adaptation."),indent=2)+"\n")
     print("Finite PPO updates, new strength learning and exact checkpoint reload passed.")
     return output
