@@ -1,6 +1,0 @@
-{
-  "output": "/home/ubuntu/faliure/run/diagnosis/branch-reset-20261008/physx_cuda/20261008T182546-b928653d",
-  "movement_weights_and_outputs_exact_after_learning": true,
-  "strength_parameter_change_squared": 0.0022215176723570096,
-  "checkpoint_reload_exact": true
-}

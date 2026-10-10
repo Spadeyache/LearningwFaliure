@@ -1,6 +1,0 @@
-{
-  "output": "/home/ubuntu/faliure/run/diagnosis/branch-reset-20261008/physx_cpu/20261008T175020-5a607c49",
-  "movement_weights_and_outputs_exact_after_learning": true,
-  "strength_parameter_change_squared": 0.001964252144261991,
-  "checkpoint_reload_exact": true
-}

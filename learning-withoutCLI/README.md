@@ -225,20 +225,6 @@ Artifacts: `runs/checks/grip_extension/calibration/20261008T031936-anchored/`,
 `runs/checks/grip_extension/inspection/20261008T031931-9f92e11a/`.
 
 
-## Branch and reset verification
-
-Run `python learning-withoutCLI/checks/check_strength_branch.py` for checks of:
-
-- Exact movement/output preservation at conversion and after CPU/GPU PPO updates.
-- Independent strength learning, strength-only likelihoods and checkpoint reload.
-- Full and partial GPU resets, retaining contact readings and motor caps of active robots.
-- Genuine initial grasps and physical dropping/holding under weak/strong grip limits.
-
-Implementation verification and short training artifacts are saved under
-`run/diagnosis/branch-reset-20261008/`. Diagnostic models are excluded from
-`checkpoint="latest"`; full runs still save under `runs/learning/`.
-These checks establish working integration, not learned weight adaptation.
-
 ## Recovering a failed hold preparation
 
 Holding practice must establish real airborne finger contact before returning
@@ -248,10 +234,6 @@ retries. It still aborts with the failed robot indices if no valid grasp can be
 prepared after 50 steps. These transitions do not enter PPO's rollout or the
 50-step episode limit; cubes are never attached to the hand.
 
-`python learning-withoutCLI/checks/check_hold_reset.py` checks recovery from a
-deliberately misplaced heavy cube, rejection of a persistent failure, repeated
-CPU/GPU resets, and continuation from the saved update-126 model. Evidence is
-saved under `run/diagnosis/hold-reset-20261008/`.
 
 The run `20261008T183327-ffbcabfe` saved `ckpt_126.pt` at 375,000 transitions
 before preparation failed. `checkpoint="latest"` selects completed runs, so
@@ -312,10 +294,3 @@ configuration explicitly; the inspection manifest flags that physics differs
 from training. The per-step logs, episode/group summaries, GIF/PNG overlays and
 aggregate plots all identify the changing friction. The original baseline
 inspection artifacts and saved model weights are not rewritten.
-
-Run `python learning-withoutCLI/checks/check_mass_friction.py` for physical
-material checks, hidden-input checks, weak/strong hold comparisons, reset
-preparation, short PPO continuation and labeled inspection. Evidence and an
-old-policy baseline in the new physics are saved under
-`run/diagnosis/mass-friction-20261008/`. Those diagnostic models are excluded
-from automatic selection of the latest main-training checkpoint.
