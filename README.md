@@ -1,5 +1,10 @@
 # Gripping and lifting PPO learning workspace
 
+For failure-attribution data collection, see the [environment audit and collector
+guide](failure_collection/README.md). The collector runs the cached official pick
+policy across independent physical-property sweeps and saves one versioned NPZ
+per episode, separating sensor proxies from simulator labels.
+
 The main scripts extend ManiSkill's PickCube PPO baseline with a floating cube
 goal, variable physical mass and grip-strength control. The policy now has
 45 inputs (previous 43 plus measured left/right finger forces) and five actions
@@ -16,14 +21,19 @@ Run these commands in Bash:
 ```bash
 cd /home/ubuntu/faliure
 source scripts/activate_grip.sh
-python learning-withoutCLI/train_ppo.py
-python learning-withoutCLI/inspect_policy.py
+python learning-withoutCLI/train_ppo.py --prepare-only --iterations 3500
 ```
 
+This prepares settings and starting weights without simulation or learning.
+The command prints how to launch that prepared configuration later. Running
+`train_ppo.py` without `--prepare-only` starts training.
+
 Edit SETTINGS at the top of each script. The default fine-tuning budget is
-1,002,000 interactions (334 cycles), across 60 GPU robots equally split among
-40, 64, 100, 250 and 500 gram cubes. Training copies the newest compatible model
-from completed main runs and learns the added strength output. Adam restarts.
+10,500,000 interactions (3,500 cycles), across 60 GPU robots equally split among
+40, 64, 100, 250 and 500 gram cubes. The default `carry_joint` stage optimizes both
+movement/opening and grip strength from the newest compatible completed model.
+Adam restarts. The earlier strength-only stages remain available.
+Use `python learning-withoutCLI/inspect_policy.py` to inspect a completed model.
 
 The cube target floats at 10–30 cm upright bottom clearance. Carry the cube to
 that point and keep holding it with a still arm. A small measured-force cost

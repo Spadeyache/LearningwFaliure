@@ -1,0 +1,44 @@
+{
+  "reported_mass_kg": 0.04,
+  "seed_count": 10,
+  "start_seed": 2000,
+  "episode_steps": 100,
+  "contact_threshold_n": 0.05,
+  "design_seed": 17,
+  "mixed_conditions": 32,
+  "baseline": {
+    "mass_kg": 0.1,
+    "static_friction": 0.4,
+    "dynamic_friction": 0.4,
+    "finger_friction": 0.2,
+    "table_friction": 0.3,
+    "shape": "cube",
+    "size_xyz_m": [0.04, 0.04, 0.04],
+    "com_offset_m": [0, 0, 0],
+    "goal_clearance_m": 0.2
+  },
+  "factors": {
+    "mass": [{"mass_kg": 0.04}, {"mass_kg": 0.1}, {"mass_kg": 0.5}],
+    "object_friction": [
+      {"static_friction": 0.1, "dynamic_friction": 0.1},
+      {"static_friction": 0.4, "dynamic_friction": 0.4},
+      {"static_friction": 1.0, "dynamic_friction": 1.0}
+    ],
+    "size": [
+      {"size_xyz_m": [0.03, 0.03, 0.03]},
+      {"size_xyz_m": [0.04, 0.04, 0.04]},
+      {"size_xyz_m": [0.05, 0.05, 0.05]}
+    ],
+    "shape": [{"shape": "cube"}, {"shape": "sphere"}],
+    "com": [
+      {"com_offset_m": [-0.005, 0, 0]},
+      {"com_offset_m": [0, 0, 0]},
+      {"com_offset_m": [0.005, 0, 0]}
+    ],
+    "goal_height": [{"goal_clearance_m": 0.1}, {"goal_clearance_m": 0.2}, {"goal_clearance_m": 0.3}],
+    "finger_friction": [{"finger_friction": 0.1}, {"finger_friction": 0.2}, {"finger_friction": 0.5}],
+    "table_friction": [{"table_friction": 0.1}, {"table_friction": 0.3}, {"table_friction": 0.8}]
+  },
+  "paired_factors": [["mass", "object_friction"], ["mass", "size"], ["mass", "goal_height"]],
+  "crossed_factors": [["mass", "object_friction"]]
+}

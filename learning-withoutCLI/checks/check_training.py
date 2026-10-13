@@ -98,7 +98,7 @@ def check_gpu_controller():
 def main():
     torch.set_num_threads(4)
     check_model();check_physics()
-    output=train({"total_timesteps":150,"num_envs":1,"num_steps":50,"num_minibatches":2,
+    output=train({"training_stage":"hold_strength","total_timesteps":150,"num_envs":1,"num_steps":50,"num_minibatches":2,
                   "num_eval_envs":1,"num_eval_steps":50,"eval_freq":2,"update_epochs":2,
                   "sim_backend":"physx_cpu","run_root":str(ROOT/"runs/checks/grip_extension/cpu_training")})
     agent,saved=load_checkpoint(output/"final_ckpt.pt")

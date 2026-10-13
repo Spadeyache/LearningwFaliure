@@ -1,15 +1,18 @@
-"""THE TRAINING SCRIPT: edit SETTINGS, then run this file.
+"""THE TRAINING SCRIPT: edit SETTINGS; --prepare-only saves a setup without training.
 
 lift_task.py defines the world/measurements; ppo.py defines actor and critic.
 The original ManiSkill PPO loop collects experience and adjusts the networks.
 """
+import argparse
 from datetime import datetime, timezone
 import hashlib
 from importlib.metadata import version
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
+import shlex
 import sys
 import uuid
 import torch
@@ -22,9 +25,9 @@ ROOT = HERE.parent
 SOURCE = HERE / "examples" / "maniskill_pick_cube" / "ppo_upstream.py"
 SETTINGS = {
     "seed": 1,
-    "training_stage": "hold_strength", # Hold the arm still; PPO learns only the strength branch.
-    # Set training_stage="carry_strength" later to test strength learning during carrying.
-    "total_timesteps": 150_000,    # Force-penalty trial: 50 collect/learn cycles.
+    "training_stage": "carry_joint", # Learn movement/opening AND strength in the full picking task.
+    # hold_strength and carry_strength retain the earlier strength-only training.
+    "total_timesteps": 10_500_000, # 3,500 rollout/learning cycles; override with --iterations.
     "num_envs": 60,               # 12 robots at each of five physical masses.
     "num_steps": 50,              # 60 * 50 = 3,000 transitions before learning.
     "num_minibatches": 10,        # 300 transitions per optimizer step.
@@ -70,7 +73,8 @@ def load_checkpoint(path):
     if (saved.get("artifact_origin") != ORIGIN or saved.get("input_sizes") != INPUT_SIZES
             or saved.get("action_description") != ACTION_DESCRIPTION):
         raise ValueError("Choose a 45-input/five-output grip-aware checkpoint; train_ppo converts previous weighted policies")
-    agent = initialize_from_pretrained(Agent(), path)
+    mode = saved.get("optimization_mode", "strength_only")
+    agent = initialize_from_pretrained(Agent(optimization_mode=mode), path)
     agent.eval()
     return agent, saved
 
@@ -96,16 +100,21 @@ def latest_checkpoint(allow_legacy=False):
     raise FileNotFoundError("No compatible completed training model. Set checkpoint=None to use the published policy.")
 
 
-def main(settings=None):
+def resolve_settings(settings=None):
+    """Validate without creating environments, run folders, or learning updates."""
     settings = {**SETTINGS, **(settings or {})}
-    if settings['training_stage'] not in ('hold_strength', 'carry_strength'):
-        raise ValueError('Choose hold_strength or carry_strength')
+    unknown = set(settings) - set(SETTINGS)
+    if unknown:
+        raise ValueError(f"Unknown training settings: {sorted(unknown)}")
+    if settings['training_stage'] not in ('hold_strength', 'carry_strength', 'carry_joint'):
+        raise ValueError('Choose hold_strength, carry_strength, or carry_joint')
+    optimization_mode = 'joint' if settings['training_stage'] == 'carry_joint' else 'strength_only'
     if settings['training_stage'] == 'hold_strength' and (settings['partial_reset'] or settings['eval_partial_reset']):
         raise ValueError('Hold practice needs synchronized full resets: partial_reset=False and eval_partial_reset=False')
     settings.update(friction_settings(settings))
     training_env_id = HOLD_ENV_ID if settings['training_stage'] == 'hold_strength' else ENV_ID
     for key in ("total_timesteps", "num_envs", "num_steps", "num_minibatches", "num_eval_envs", "num_eval_steps", "eval_freq", "update_epochs"):
-        if not isinstance(settings[key], int) or settings[key] <= 0:
+        if type(settings[key]) is not int or settings[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
     batch = settings["num_envs"] * settings["num_steps"]
     if settings["total_timesteps"] % batch or batch % settings["num_minibatches"] or batch // settings["num_minibatches"] < 2:
@@ -122,6 +131,26 @@ def main(settings=None):
             raise ValueError("CPU physics supports one robot; its mass cycles at reset")
     elif settings["num_envs"] % len(masses) or settings["num_eval_envs"] % len(masses):
         raise ValueError(f"With {len(masses)} masses, num_envs ({settings['num_envs']}) and num_eval_envs ({settings['num_eval_envs']}) must both be multiples of {len(masses)}")
+    if type(settings["seed"]) is not int or not 0 <= settings["seed"] < 2**31:
+        raise ValueError("seed must be a nonnegative 31-bit integer")
+    for key in ("learning_rate", "max_grad_norm", "target_kl"):
+        value = settings[key]
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{key} must be positive and finite")
+    return settings, training_env_id, optimization_mode
+
+
+def main(settings=None, *, prepare_only=False):
+    """Prepare reproducible sources/weights, then launch only when requested.
+
+    prepare_only=True never creates a simulator or starts the PPO subprocess.
+    Stored weights are initialization copies, not trained/updated checkpoints.
+    """
+    settings, training_env_id, optimization_mode = resolve_settings(settings)
+    masses = settings["masses_kg"]
+    optimized_actions = (["x", "y", "z", "finger_opening", "grip_strength_limit"]
+                         if optimization_mode == "joint" else ["grip_strength_limit"])
+    frozen_actions = [] if optimization_mode == "joint" else ["x", "y", "z", "finger_opening"]
     torch.set_num_threads(4)
     torch.manual_seed(settings["seed"])
     name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8]
@@ -146,7 +175,12 @@ def main(settings=None):
     runtime = original.replace(old, replacement).replace("import mani_skill.envs\n", "import mani_skill.envs\nimport lift_task\nimport hold_task\n", 1)
     start, end = runtime.index("class Agent(nn.Module):"), runtime.index("class Logger:")
     runtime = runtime[:start] + "from ppo import Agent\n\n" + runtime[end:]
-    runtime = runtime.replace("optim.Adam(agent.parameters(),", "optim.Adam((p for p in agent.parameters() if p.requires_grad),")
+    agent_anchor = "agent = Agent(envs).to(device)"
+    optimizer_anchor = "optim.Adam(agent.parameters(),"
+    if runtime.count(agent_anchor) != 1 or runtime.count(optimizer_anchor) != 1:
+        raise RuntimeError("Pinned PPO model/optimizer integration changed")
+    runtime = runtime.replace(agent_anchor, f"agent = Agent(envs, optimization_mode={optimization_mode!r}).to(device)")
+    runtime = runtime.replace(optimizer_anchor, "optim.Adam((p for p in agent.parameters() if p.requires_grad),")
     runtime = runtime.replace("import torch\n", "import torch\ntorch.set_num_threads(4)\n", 1)
     runtime = runtime.replace("eval_envs.step(agent.get_action(eval_obs, deterministic=True))", "eval_envs.step(clip_action(agent.get_action(eval_obs, deterministic=True)))")
     runtime = runtime.replace("runs/{run_name}", "{run_name}")
@@ -159,28 +193,35 @@ def main(settings=None):
         previous = json.loads((source_checkpoint.parent / "manifest.json").read_text())
         if previous.get("artifact_origin") not in (ORIGIN, LEGACY_ORIGIN):
             raise ValueError("Choose a grip-aware or previous weighted training checkpoint")
-        agent = initialize_from_pretrained(Agent(), source_checkpoint)
-        checkpoint = str(output / "initialization.pt")
-        torch.save(agent.state_dict(), checkpoint)
+        agent = initialize_from_pretrained(Agent(optimization_mode=optimization_mode), source_checkpoint)
         initialization = dict(kind="latest_trained_policy" if settings["checkpoint"] == "latest" else "trained_policy",
                               checkpoint=str(source_checkpoint), sha256=digest(source_checkpoint),
                               source_observations=previous.get("observations"), source_actions=previous.get("actions"),
                               source_settings=previous.get("settings"), optimizer_restarted=True,
                               source_policy_architecture=previous.get("policy_architecture", "shared_actor"),
-                              branch_initialization="copy trained actor into separate strength branch; freeze movement",
+                              branch_initialization="retain existing branches, or copy a shared actor into independent movement and strength branches",
+                              optimization_mode=optimization_mode,
                               added_force_columns="zero when extending 43 inputs", added_strength_action="maximum when extending four actions")
     elif settings["initialize_from_pretrained"]:
         sys.path.insert(0, str(SOURCE.parent))
         from run_pretrained import download_model
         published, _, url = download_model("pd_ee_delta_pos")
-        agent = initialize_from_pretrained(Agent(), published)
-        checkpoint = str(output / "initialization.pt")
-        torch.save(agent.state_dict(), checkpoint)
+        agent = initialize_from_pretrained(Agent(optimization_mode=optimization_mode), published)
         initialization = dict(kind="published_42_input_policy", checkpoint=str(published), url=url,
                               sha256=digest(published), added_weight_and_force_columns="zero", added_strength_action="maximum", weight_input_initially_used=False)
+    else:
+        agent = Agent(optimization_mode=optimization_mode)
+    # Always save the exact starting weights, including random initialization.
+    # A later --from-prepared run does not depend on a moving latest selection.
+    checkpoint = str(output / "initialization.pt")
+    torch.save(agent.state_dict(), checkpoint)
+    initialization["snapshot_sha256"] = digest(checkpoint)
     manifest = dict(artifact_origin=ORIGIN, environment=training_env_id, evaluation_environment=training_env_id, deployment_environment=ENV_ID, observations=45, actions=5,
-                    policy_architecture=POLICY_ARCHITECTURE, optimized_actions=["grip_strength_limit"],
-                    frozen_actions=["x", "y", "z", "finger_opening"],
+                    policy_architecture=POLICY_ARCHITECTURE, optimization_mode=optimization_mode,
+                    optimized_actions=optimized_actions, frozen_actions=frozen_actions,
+                    planned_iterations=settings["total_timesteps"] // (settings["num_envs"] * settings["num_steps"]),
+                    ppo_likelihood="joint five-action Gaussian" if optimization_mode == "joint" else "strength-only Gaussian",
+                    action_storage="unclipped sampled actions with matching log probabilities; clipping only at simulator application",
                     action_description=ACTION_DESCRIPTION, input_fields=INPUT_FIELDS, input_sizes=INPUT_SIZES,
                     settings=settings, horizon=HORIZON, initialization=initialization,
                     source_commit=SOURCE_COMMIT, source_sha256=digest(SOURCE),
@@ -189,12 +230,13 @@ def main(settings=None):
                     differences_from_example=["floating goal range", "varied physical masses/inertias", "true weight and measured finger forces appended to 42 inputs",
                                               "independent per-finger motor strength action", "held-goal success and measured-force cost",
                                               "smaller balanced parallel batch", "warm start from latest trained policy", "full-episode holding during training",
-                                              "independent strength branch and frozen movement", "strength-only PPO likelihood",
+                                              "both independent actor branches trainable" if optimization_mode == "joint" else "independent strength branch and frozen movement",
+                                              "joint five-action PPO likelihood" if optimization_mode == "joint" else "strength-only PPO likelihood",
                                               "explicitly recorded hidden mass-correlated friction profile",
-                                              "physical hold preparation" if settings["training_stage"] == "hold_strength" else "carry-stage strength practice"],
+                                              "physical hold preparation" if settings["training_stage"] == "hold_strength" else "full pickup and carrying"],
                     friction_experiment=friction_experiment(settings, masses),
                     training_stage=settings["training_stage"],
-                    checkpoint_contents="model weights only; continuation restarts Adam and simulation", status="running")
+                    checkpoint_contents="model weights only; continuation restarts Adam and simulation", status="prepared")
     manifest_path = output / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     (output / "settings.json").write_text(json.dumps(settings, indent=2) + "\n")
@@ -212,8 +254,20 @@ def main(settings=None):
         command.extend(["--no-cuda", "--reconfiguration-freq", "1"])
     child_env = dict(os.environ)
     child_env["LD_LIBRARY_PATH"] = "/usr/lib/wsl/lib:" + child_env.get("LD_LIBRARY_PATH", "")
-    print("Grip-strength branch training (" + settings["training_stage"] + "):", output, flush=True)
+    launch = dict(command=command, cwd=str(ROOT), environment_overrides={"LD_LIBRARY_PATH": child_env["LD_LIBRARY_PATH"]})
+    (output / "launch_command.json").write_text(json.dumps(launch, indent=2) + "\n")
+    print("Policy setup (" + settings["training_stage"] + ", " + optimization_mode + "):", output, flush=True)
+    print("Optimized actions:", ", ".join(optimized_actions), flush=True)
+    print("Planned rollout/learning cycles:", manifest["planned_iterations"], flush=True)
+    print("Initial checkpoint:", initialization.get("checkpoint", "random"), flush=True)
     print("Friction conditions:", manifest["friction_experiment"], flush=True)
+    if prepare_only:
+        print("PREPARED ONLY: no simulation, PPO updates, or training subprocess started.", flush=True)
+        print("To train later with these settings and source weights: " + shlex.join([
+            sys.executable, str(HERE / "train_ppo.py"), "--from-prepared", str(output)]), flush=True)
+        return output
+    manifest["status"] = "running"
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     try:
         with (output / "console.log").open("w") as log:
             process = subprocess.Popen(command, cwd=ROOT, env=child_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
@@ -239,5 +293,32 @@ def main(settings=None):
     return output
 
 
+def cli(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--prepare-only", action="store_true", help="Save validated settings, runtime and initialization without starting training")
+    parser.add_argument("--iterations", type=int, help="Number of rollout/learning cycles (not PPO minibatch epochs)")
+    parser.add_argument("--checkpoint", help="Existing model checkpoint path, or latest")
+    parser.add_argument("--from-prepared", type=Path, help="Use saved settings and pin the source weights from an earlier preparation; creates a new run")
+    args = parser.parse_args(argv)
+    settings = dict(SETTINGS)
+    if args.from_prepared:
+        prepared = json.loads((args.from_prepared / "manifest.json").read_text())
+        if prepared.get("artifact_origin") != ORIGIN or prepared.get("status") != "prepared":
+            parser.error("--from-prepared requires a prepared grip-policy run")
+        settings = prepared["settings"]
+        snapshot = args.from_prepared.resolve() / "initialization.pt"
+        expected_hash = prepared["initialization"].get("snapshot_sha256")
+        if not snapshot.is_file() or expected_hash is None or digest(snapshot) != expected_hash:
+            parser.error("Prepared initialization snapshot is missing or changed; prepare again")
+        settings["checkpoint"] = str(snapshot)
+    if args.checkpoint:
+        settings["checkpoint"] = args.checkpoint
+    if args.iterations is not None:
+        if args.iterations <= 0:
+            parser.error("--iterations must be positive")
+        settings["total_timesteps"] = args.iterations * settings["num_envs"] * settings["num_steps"]
+    return main(settings, prepare_only=args.prepare_only)
+
+
 if __name__ == "__main__":
-    main()
+    cli()

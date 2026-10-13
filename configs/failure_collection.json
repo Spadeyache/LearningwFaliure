@@ -1,0 +1,24 @@
+{
+  "base_properties": {"finger_friction": 0.6, "table_friction": 0.3},
+  "axes": {
+    "mass": [{"mass_kg": 0.04}, {"mass_kg": 0.25}, {"mass_kg": 0.5}],
+    "surface": [
+      {"static_friction": 0.1, "dynamic_friction": 0.1},
+      {"static_friction": 0.3, "dynamic_friction": 0.3},
+      {"static_friction": 0.8, "dynamic_friction": 0.8}
+    ],
+    "geometry": [
+      {"shape": "cube", "size_xyz_m": [0.04, 0.04, 0.04]},
+      {"shape": "box", "size_xyz_m": [0.03, 0.05, 0.06]},
+      {"shape": "sphere", "size_xyz_m": [0.05, 0.05, 0.05]}
+    ],
+    "center_of_mass": [
+      {"com_offset_m": [0.0, 0.0, 0.0]},
+      {"com_offset_m": [0.008, 0.0, 0.0]},
+      {"com_offset_m": [-0.008, 0.0, 0.0]}
+    ]
+  },
+  "seeds": [1000, 1001, 1002, 1003, 1004],
+  "episode_steps": 100,
+  "contact_threshold_n": 0.05
+}

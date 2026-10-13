@@ -1,11 +1,33 @@
 # Grip-aware PPO: current setup
 
-Run the same plain scripts:
+Prepare the joint movement/strength run without starting training:
 
 ```bash
 cd /home/ubuntu/faliure
 source scripts/activate_grip.sh
-python learning-withoutCLI/train_ppo.py
+python learning-withoutCLI/train_ppo.py --prepare-only --iterations 3500
+```
+
+This writes validated settings, copied initialization weights, frozen source and
+runtime files, and a manifest with `status="prepared"`. It creates no simulator
+and starts no training subprocess. The default source is the latest completed
+compatible checkpoint; use `--checkpoint /absolute/path/final_ckpt.pt` to choose
+one explicitly. Preparation copies source weights without updating them.
+
+When ready to train, use the prepared directory printed by that command:
+
+```bash
+python learning-withoutCLI/train_ppo.py --from-prepared runs/learning/PREPARED_RUN
+```
+
+`PREPARED_RUN` is a placeholder. This command creates a new run using the saved
+settings and hash-checked `initialization.pt` snapshot in the prepared directory.
+Later changes to the latest checkpoint or its original source path do not change
+those prepared starting weights. The new run copies the current code; this option
+reuses saved settings and weights. Running `train_ppo.py` without `--prepare-only`
+starts training immediately. Inspection remains:
+
+```bash
 python learning-withoutCLI/inspect_policy.py
 ```
 
@@ -17,33 +39,43 @@ Check artifacts stay under `runs/checks/`.
 
 - `lift_task.py`: cube mass/inertia, floating goal, measurements and reward.
 - `grip_controller.py`: native Panda finger opening plus a chosen motor force limit.
-- `ppo.py`: one combined policy with frozen movement and an independent strength branch.
+- `ppo.py`: one combined policy with independent movement and strength branches; joint or strength-only optimization.
 - `hold_task.py`: real held-object practice; arm stays still while strength is learned.
 - `train_ppo.py`: warm-start the latest model and run the pinned ManiSkill PPO loop.
 - `inspect_policy.py`: run without learning, log signals and compare weight estimates.
 - `checks/`: optional checks of controllers, rewards, PPO updates and loading.
 - `examples/`: simulator starter, original ManiSkill references and earlier experiments.
 
-## One policy, two branches: preserve what the model learned
+## One policy, two branches
 
-The existing movement/opening actor is copied from your checkpoint and frozen.
-The strength branch gets an independent copy of those trained layers; only its
-fifth output is used. The copies share no parameters. Before training, converted
-45-input/five-action checkpoints produce exactly the same deterministic outputs.
-PPO updates the strength branch and critic, while the movement network and its
-saved exploration values remain unchanged. Only strength is sampled during
-training; PPO likelihood, entropy and KL calculations use that action alone.
-Your original checkpoint files are never overwritten.
+The movement/opening actor and independent strength branch retain their learned
+weights. The copies share no parameters; the movement branch supplies XYZ and
+finger opening, and the strength branch supplies the fifth action. Loading an
+existing branched checkpoint retains both branches. Converting a shared
+45-input/five-action checkpoint preserves its deterministic outputs before
+training. Original checkpoint files are never overwritten.
 
-`train_ppo.py` now defaults to `training_stage="hold_strength"`. Each episode
-begins with the cube physically between closed fingers and a brief strong-grip
+`train_ppo.py` defaults to `training_stage="carry_joint"`. PPO samples all five
+actions and updates both actor branches, both used exploration distributions,
+and the critic on the full picking/carrying task. Likelihood, entropy and KL
+calculations include all five actions. This allows approach and finger opening
+to learn alongside grip strength; it does not guarantee that a trained policy
+will outperform its initialization. `Agent(optimization_mode="joint")` selects
+this behavior. Preparation only enables the mode and copies weights.
+
+The two previous stages remain available with
+`Agent(optimization_mode="strength_only")`. Their movement/opening network and
+saved exploration values stay frozen; only strength is sampled and contributes
+to PPO likelihood, entropy and KL. Set `training_stage="hold_strength"` for
+pre-grasped practice. Each episode begins with the cube physically between
+closed fingers and a brief strong-grip
 settling phase. No attachment or lock is used. These preparation steps are not
 PPO experience. The episode then holds the arm at its initial position and lets
 the strength action determine whether the cube stays held. Warm-up affects the
 whole simulator, so this stage requires synchronized full resets and
 `partial_reset=False`, including evaluation.
 
-Later, `training_stage="carry_strength"` uses the original floating-goal carrying
+`training_stage="carry_strength"` uses the original floating-goal carrying
 task, with movement/opening still frozen and PPO still optimizing only strength.
 Preserved weights do not guarantee identical physical trajectories: new strength
 changes forces, the observations, and therefore later actions. This stage does
@@ -53,6 +85,9 @@ Inspection defaults to `inspection_stage="carry"` to test the combined policy.
 Set `inspection_stage="hold_strength"` to view the strength practice task instead.
 The same checkpoint supports both. Training evaluation measures its selected
 training stage; hold success is not evidence of successful reaching/carrying.
+Both optimization modes use compatible checkpoint tensor layouts and identical
+deterministic inference. Manifests record the selected mode, optimized actions
+and frozen actions; old manifests without a mode retain strength-only loading.
 
 ## Inputs: retain the previous 43 and append two forces
 
@@ -111,8 +146,9 @@ Each step subtracts:
 grip_force_cost × clamp(mean measured finger compression / maximum motor limit, 0, 1)
 ```
 
-The default coefficient is 0.05. Thus the cost is at most 0.05 per step;
-successful holding remains the dominant reward. This encourages lower measured
+The environment default coefficient is 0.05; the current training settings use
+0.10, so the training cost is at most 0.10 per step. Successful holding remains
+the dominant reward. This encourages lower measured
 squeezing while still holding. It does not prescribe a force from a weight formula
 or guarantee that the learned policy will use weight. All reward parts and the
 total are logged, including after success.
@@ -148,13 +184,17 @@ checkpoint/hash plus source settings. Earlier files and artifacts remain intact.
 
 ## Starting training settings
 
-The mass range is 0.040, 0.064, 0.100, 0.250 and 0.500 kg. Shape and friction
-remain unchanged; physical inertia scales with mass. Sixty GPU environments
-provide twelve robots per mass, with ten evaluation robots (two per mass).
+The mass range is 0.040, 0.064, 0.100, 0.250 and 0.500 kg. Shape remains
+unchanged and physical inertia scales with mass. The current hidden friction
+profile also reduces cube friction as mass increases, as detailed below. Sixty
+GPU environments provide twelve robots per mass, with ten evaluation robots
+(two per mass).
 GPU masses remain assigned across resets. CPU one-robot checks cycle masses.
 
 One rollout contains 60 × 50 = 3,000 interactions.
-The default fine-tuning budget is 1,002,000 interactions: 334 collect/learn cycles.
+The default fine-tuning budget is 10,500,000 interactions: 3,500 collect/learn
+cycles. `--iterations N` sets that number of cycles, each containing 3,000
+interactions under the default environment/rollout sizes.
 Each cycle has up to four PPO epochs, ten minibatches per pass, and target-KL
 early stopping. The terminal's Epoch counter means collect/learn cycles.
 Learning rate is 0.0001; other PPO loss/advantage settings retain the reference.
@@ -162,9 +202,10 @@ These are starting choices, not tuned or proven settings.
 
 PPO remains the pinned ManiSkill baseline at commit
 `a4a4f9272ad64b1564035874b605ceb687b63ed8`: three 256-unit tanh layers per network,
-Gaussian exploration of strength only, clipping actions before physics, and finite-horizon
-GAE. The source baseline is preserved unchanged; the runtime replaces the model
-and task integration. Published checkpoint metadata does not establish the exact
+Gaussian exploration of all five actions in `carry_joint` (strength only in the
+other stages), clipping actions before physics, and finite-horizon GAE. The
+source baseline is preserved unchanged; the runtime replaces the model and task
+integration. Published checkpoint metadata does not establish the exact
 original training seed, budget or hyperparameter overrides.
 
 ## Inspect whether grip strength changes with weight
@@ -191,7 +232,8 @@ Force averages include only grasped steps with cube bottom clearance above 3 cm.
 Missing averages mean no qualifying contact; compare success rates alongside
 force plots. Loss of a grasp flag can mean opening or dropping, not confirmed
 slipping. Relative cube motion and recordings help diagnose it.
-Friction is still the original setting; no slipping or failure is artificially forced.
+Friction follows the saved experiment settings. No extra impulses or scripted
+failure events are applied.
 
 A successful experiment should demonstrate secure holds across masses, lower
 force usage for light cubes where feasible, and repeatable comparisons against
@@ -281,8 +323,8 @@ remain. Collision geometry, masses/inertias, gravity and motor strength bounds
 retain their previous definitions. Static/dynamic material coefficients are
 both logged; they are not the same quantity as measured contact force.
 
-`train_ppo.py` retains the `0.10` force cost and 150,000-step trial, starts from
-the latest completed checkpoint, and writes the friction configuration, mass
+`train_ppo.py` retains the `0.10` force cost, starts from the latest completed
+checkpoint by default, and writes the friction configuration, mass
 mapping and experiment note into each new run's manifest. GPU materials are
 assigned before physics initialization, separately for each robot's fixed mass.
 CPU inspection updates cube material when actual mass changes at reset.

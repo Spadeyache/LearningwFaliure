@@ -1,9 +1,10 @@
-"""ONE POLICY, TWO BRANCHES: preserve movement; learn grip strength separately.
+"""ONE POLICY, TWO BRANCHES: choose which actions PPO optimizes.
 
-actor_mean is the saved movement/opening network, frozen byte-for-byte.
-strength_mean is an independent copy whose last output learns the motor cap.
-The critic learns expected rewards. PPO likelihood/entropy use ONLY strength:
-the other four actions are deterministic and are not optimized or resampled.
+strength_only preserves the saved movement/opening network byte-for-byte and
+optimizes only the independent grip-strength branch. joint optimizes both
+branches using a five-action Gaussian and its full likelihood and entropy.
+Both modes retain identical checkpoint tensors and deterministic mean actions.
+Sampled actions remain raw here; the environment caller clips controller input.
 """
 from copy import deepcopy
 import importlib.util
@@ -16,7 +17,9 @@ from torch.distributions import Normal
 
 SOURCE_COMMIT = 'a4a4f9272ad64b1564035874b605ceb687b63ed8'
 SOURCE = Path(__file__).resolve().parent / 'examples' / 'maniskill_pick_cube' / 'ppo_upstream.py'
-POLICY_ARCHITECTURE = 'frozen_movement_independent_strength_v1'
+LEGACY_POLICY_ARCHITECTURE = 'frozen_movement_independent_strength_v1'
+POLICY_ARCHITECTURE = 'independent_movement_strength_v2'
+OPTIMIZATION_MODES = ('strength_only', 'joint')
 
 
 def _upstream():
@@ -30,34 +33,53 @@ def _upstream():
 
 
 class Agent(_upstream().Agent):
-    def __init__(self, envs=None):
+    def __init__(self, envs=None, optimization_mode='strength_only'):
+        if optimization_mode not in OPTIMIZATION_MODES:
+            raise ValueError(f'optimization_mode must be one of {OPTIMIZATION_MODES}')
         if envs is None:
             envs = SimpleNamespace(single_observation_space=SimpleNamespace(shape=(45,)),
                                    single_action_space=SimpleNamespace(shape=(5,)))
         if envs.single_observation_space.shape != (45,) or envs.single_action_space.shape != (5,):
             raise ValueError('Grip-aware policy requires 45 measurements and five actions')
         super().__init__(envs)
+        self.optimization_mode = optimization_mode
         self.strength_mean = deepcopy(self.actor_mean)
         # Keep the original five-row movement network intact for exact copying;
         # its fifth row is retained for provenance but never used for movement.
         self.strength_logstd = nn.Parameter(self.actor_logstd[:, 4:5].detach().clone())
-        self.actor_mean.requires_grad_(False)
-        self.actor_logstd.requires_grad_(False)
+        self.actor_mean.requires_grad_(optimization_mode == 'joint')
+        self.actor_logstd.requires_grad_(optimization_mode == 'joint')
 
     def action_mean(self, x):
-        with torch.no_grad():
+        if self.optimization_mode == 'joint':
             movement = self.actor_mean(x)[:, :4]
+        else:
+            with torch.no_grad():
+                movement = self.actor_mean(x)[:, :4]
         return torch.cat((movement, self.strength_mean(x)[:, 4:5]), dim=-1)
+
+    def _joint_distribution(self, mean):
+        # Retain the legacy fifth actor row/std for checkpoint compatibility;
+        # the independent strength branch supplies the fifth action instead.
+        logstd = torch.cat((self.actor_logstd[:, :4], self.strength_logstd), dim=-1)
+        return Normal(mean, logstd.exp())
 
     def get_action(self, x, deterministic=False):
         mean = self.action_mean(x)
         if deterministic:
             return mean
+        if self.optimization_mode == 'joint':
+            return self._joint_distribution(mean).sample()
         strength = Normal(mean[:, 4:5], self.strength_logstd.exp()).sample()
         return torch.cat((mean[:, :4], strength), dim=-1)
 
     def get_action_and_value(self, x, action=None):
         mean = self.action_mean(x)
+        if self.optimization_mode == 'joint':
+            distribution = self._joint_distribution(mean)
+            if action is None:
+                action = distribution.sample()
+            return action, distribution.log_prob(action).sum(1), distribution.entropy().sum(1), self.critic(x)
         distribution = Normal(mean[:, 4:5], self.strength_logstd.exp())
         if action is None:
             action = torch.cat((mean[:, :4], distribution.sample()), dim=-1)
@@ -69,7 +91,8 @@ def initialize_from_pretrained(agent, checkpoint, initial_strength_action=1.):
 
     Original checkpoints are never edited. Copy all old actor/critic weights.
     Duplicate the actor into the strength branch; initialize only previously
-    missing force columns/output. A copied movement network stays frozen.
+    missing force columns/output. The caller's optimization_mode and gradient
+    settings are preserved; loading weights never chooses a training mode.
     """
     source = torch.load(checkpoint, map_location='cpu', weights_only=True)
     current = agent.state_dict()
