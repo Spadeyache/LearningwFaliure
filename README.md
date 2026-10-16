@@ -1,9 +1,9 @@
 # Gripping and lifting PPO learning workspace
 
-For failure-attribution data collection, see the [environment audit and collector
-guide](failure_collection/README.md). The collector runs the cached official pick
-policy across independent physical-property sweeps and saves one versioned NPZ
-per episode, separating sensor proxies from simulator labels.
+For failure-attribution data collection, see the [current collector guide](failure_collection/README.md).
+The collector uses the trained weight-aware policy with a fixed 40 g estimate,
+varies physical properties, and saves one NPZ per episode. The current dataset is
+`runs/failure_collection/varied_fixed40g/` in `/home/ubuntu/faliure` (600 episodes).
 
 The main scripts extend ManiSkill's PickCube PPO baseline with a floating cube
 goal, variable physical mass and grip-strength control. The policy now has
