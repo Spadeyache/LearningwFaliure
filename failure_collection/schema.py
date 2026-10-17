@@ -79,19 +79,6 @@ def validate_episode(data):
         raise ValueError("Contact count disagrees with offsets")
     if bool(data["label__success_final"]) != bool(data["sim__task_success"][-1]):
         raise ValueError("Final success label disagrees with timeline")
-    if "residual" in data:
-        values = data["residual"]
-        n = len(values)
-        if values.ndim != 2 or not np.isfinite(values).all() or data["residual_channels"].shape != (values.shape[1],):
-            raise ValueError("Invalid residual values/channels")
-        if data["residual_valid_mask"].shape != (n,) or data["residual_source_valid_mask"].shape != (n, 2):
-            raise ValueError("Invalid residual padding masks")
-        if not np.array_equal(data["residual_valid_mask"], data["residual_source_valid_mask"].all(axis=1)):
-            raise ValueError("Residual mask must exclude either padded source")
-        if data["residual_time_s"].shape != (n,) or not np.all(np.diff(data["residual_time_s"]) > 0):
-            raise ValueError("Invalid residual time alignment")
-        if not str(data["matched_normal_run_id"]):
-            raise ValueError("Residual needs matched normal identity")
 
 
 def save_episode(path, data):
@@ -146,7 +133,6 @@ def describe(data):
         "input_provenance": "Ideal zero-noise simulator pose/force sensor proxies, encoder states and known commands; no perception/tactile estimator is implemented",
         "force_semantics": "Total force ON each finger (left,right) from ALL contacts. World or finger-link frame. Physics force=impulse/dt; interval mean averages K samples, peak is max sample norm; compression projects finger-local +/-y, not a surface-normal oracle",
         "relative_response_semantics": "Difference of object coordinates in successive moving TCP frames; useful slip proxy, not an inertial velocity",
-        "residual_semantics": "Post-action shifted minus matched normal; shortest relative rotation vectors replace quaternion subtraction. Last-value padding has false source/intersection masks. Exact object-pair force channels are sim-attributed, excluded from load_inputs. Channel names specify units; residuals.py defines transforms.",
         "rotation_response_semantics": "Shortest rotation vector for R_next @ inverse(R_previous), in the indicated coordinate representation",
         "missing": "Explicit grip point is NaN and availability false: policy has no such output. First-contact time is NaN if never contacted. Reset forces zero with validity false",
         "success": "Stock PickCube: geometric origin within .025m goal and all arm |qvel|<=.2rad/s. Final and any-time success distinct; held-goal flag separately available",

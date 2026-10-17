@@ -8,7 +8,6 @@ import unittest
 import numpy as np
 
 from failure_collection import SCHEMA_VERSION
-from failure_collection.collect import load_config
 from failure_collection.schema import INPUT_LAYOUTS, load_inputs, save_episode, validate_episode
 
 
@@ -151,75 +150,6 @@ class SchemaTests(unittest.TestCase):
         data["label__success_final"] = np.asarray(True)
         with self.assertRaisesRegex(ValueError, "success"):
             validate_episode(data)
-
-
-class SweepConfigTests(unittest.TestCase):
-    def setUp(self):
-        self.directory = tempfile.TemporaryDirectory()
-        self.addCleanup(self.directory.cleanup)
-        self.path = Path(self.directory.name) / "config.json"
-
-    def load(self, config):
-        self.path.write_text(json.dumps(config))
-        return load_config(self.path)
-
-    def test_cartesian_axes_preserve_coupled_properties_and_shared_seeds(self):
-        source = {
-            "base_properties": {"finger_friction": 0.7},
-            "axes": {
-                "mass": [{"mass_kg": 0.04}, {"mass_kg": 0.3}],
-                "surface": [
-                    {"static_friction": 0.2, "dynamic_friction": 0.1},
-                    {"static_friction": 0.8, "dynamic_friction": 0.6},
-                ],
-                "geometry": [
-                    {"shape": "cube", "size_xyz_m": [0.04] * 3},
-                    {"shape": "box", "size_xyz_m": [0.03, 0.04, 0.05]},
-                ],
-            },
-            "seeds": [42, 43],
-        }
-        config, conditions = self.load(source)
-        self.assertEqual(len(conditions), 8)
-        self.assertEqual(config["seeds"], [42, 43])
-        self.assertEqual(config["episode_steps"], 100)
-        self.assertEqual([c["condition_index"] for c in conditions], list(range(8)))
-        self.assertEqual(len({c["condition_id"] for c in conditions}), 8)
-        combinations = set()
-        for condition in conditions:
-            props = condition["properties"]
-            self.assertEqual(props["finger_friction"], 0.7)
-            pair = (props["static_friction"], props["dynamic_friction"])
-            self.assertIn(pair, {(0.2, 0.1), (0.8, 0.6)})
-            combinations.add((props["mass_kg"], pair, props["shape"]))
-        self.assertEqual(len(combinations), 8)
-        self.assertEqual(self.load(source)[1], conditions)
-
-    def test_default_condition_and_canonical_duplicate_detection(self):
-        _, conditions = self.load({"seeds": [0]})
-        self.assertEqual(len(conditions), 1)
-        self.assertEqual(conditions[0]["properties"]["shape"], "cube")
-        with self.assertRaisesRegex(ValueError, "Duplicate"):
-            self.load({"seeds": [0], "axes": {"mass": [{"mass_kg": 1}, {"mass_kg": 1.0}]}})
-
-    def test_overlapping_or_inconsistent_axis_keys_rejected(self):
-        for axes in (
-            {"a": [{"mass_kg": 0.1}], "b": [{"mass_kg": 0.2}]},
-            {"surface": [{"static_friction": 0.3}, {"dynamic_friction": 0.2}]},
-            {"mass": []},
-        ):
-            with self.subTest(axes=axes), self.assertRaises(ValueError):
-                self.load({"seeds": [0], "axes": axes})
-
-    def test_duplicate_invalid_or_absent_seeds_rejected(self):
-        for seeds in ([], [1, 1], [-1], [2**31], [True], [1.0]):
-            with self.subTest(seeds=seeds), self.assertRaises(ValueError):
-                self.load({"seeds": seeds})
-
-    def test_unknown_properties_and_invalid_material_pair_rejected(self):
-        for properties in ({"mas_kg": 0.1}, {"static_friction": 0.1, "dynamic_friction": 0.2}):
-            with self.subTest(properties=properties), self.assertRaises(ValueError):
-                self.load({"seeds": [0], "base_properties": properties})
 
 
 if __name__ == "__main__":

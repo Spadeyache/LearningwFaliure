@@ -10,7 +10,6 @@ import itertools
 import json
 from pathlib import Path
 import shutil
-import sys
 
 import numpy as np
 import torch
@@ -20,10 +19,8 @@ from .collect import ROOT, digest, rollout, runtime_metadata, write_json
 from .environment import CollectionEnv, normalized_properties
 from .schema import describe, save_episode, validate_episode
 
-LEARNING = ROOT / 'learning-withoutCLI'
-sys.path.insert(0, str(LEARNING))
-from grip_controller import install_strength_controller
-from ppo import Agent, POLICY_ARCHITECTURE
+from .grip_controller import install_strength_controller
+from .inference import Agent, POLICY_ARCHITECTURE
 
 
 class WeightedCollectionEnv(CollectionEnv):
@@ -189,7 +186,7 @@ def main():
     checkpoint_hash = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
     provenance = runtime_metadata()
     provenance['trained_interface_sha256'] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in (LEARNING/'ppo.py', LEARNING/'grip_controller.py', LEARNING/'examples/maniskill_pick_cube/ppo_upstream.py')}
+        for p in (Path(__file__).with_name('inference.py'), Path(__file__).with_name('grip_controller.py'))}
     identity = digest(dict(config=config, conditions=plan, checkpoint=checkpoint_hash, runtime=provenance))
     output = args.output.resolve()
     if output.exists():
@@ -210,8 +207,7 @@ def main():
         source.mkdir()
         for path in Path(__file__).parent.glob('*.py'):
             shutil.copy2(path, source/path.name)
-        for path in (LEARNING/'ppo.py', LEARNING/'grip_controller.py', LEARNING/'examples/maniskill_pick_cube/ppo_upstream.py'):
-            shutil.copy2(path, source/('trained_' + path.name))
+        shutil.copy2(Path(__file__).with_name('MANISKILL_LICENSE'), source/'MANISKILL_LICENSE')
         write_json(output/'config.json', config)
     write_json(output/'manifest.json', manifest)
     records = []
