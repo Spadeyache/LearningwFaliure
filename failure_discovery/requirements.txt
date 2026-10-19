@@ -1,0 +1,4 @@
+# Existing project NumPy/SciPy/Matplotlib are reused without upgrades.
+scikit-learn==1.7.2
+joblib==1.5.2
+threadpoolctl==3.6.0

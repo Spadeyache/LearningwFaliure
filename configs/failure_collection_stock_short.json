@@ -1,0 +1,157 @@
+{
+  "design": "stock_single",
+  "levels_per_factor": 5,
+  "seed_count": 10,
+  "start_seed": 2000,
+  "episode_steps": 50,
+  "contact_threshold_n": 0.05,
+  "factors": {
+    "mass": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.016,
+      "nominal": 0.064,
+      "max": 0.256,
+      "unit": "kg"
+    },
+    "object_friction": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.075,
+      "nominal": 0.3,
+      "max": 1.2,
+      "unit": "coefficient"
+    },
+    "dynamic_friction_ratio": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.25,
+      "nominal": 1.0,
+      "max": 1.0,
+      "unit": "sliding/static ratio"
+    },
+    "finger_friction": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.5,
+      "nominal": 2.0,
+      "max": 8.0,
+      "unit": "coefficient"
+    },
+    "table_friction": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.075,
+      "nominal": 0.3,
+      "max": 1.2,
+      "unit": "coefficient"
+    },
+    "size": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.03,
+      "nominal": 0.04,
+      "max": 0.05,
+      "unit": "m; uniform side or diameter"
+    },
+    "shape": {
+      "type": "categorical",
+      "enabled": true,
+      "values": [
+        "cube",
+        "sphere"
+      ],
+      "nominal": "cube",
+      "unit": "category"
+    },
+    "com_x": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.005,
+      "nominal": 0.0,
+      "max": 0.005,
+      "unit": "m"
+    },
+    "com_y": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.005,
+      "nominal": 0.0,
+      "max": 0.005,
+      "unit": "m"
+    },
+    "com_z": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.005,
+      "nominal": 0.0,
+      "max": 0.005,
+      "unit": "m"
+    },
+    "goal_height": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.2,
+      "nominal": 0.3,
+      "max": 0.4,
+      "unit": "m"
+    },
+    "restitution": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.0,
+      "nominal": 0.0,
+      "max": 0.5,
+      "unit": "coefficient"
+    },
+    "linear_damping": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.0,
+      "nominal": 0.0,
+      "max": 1.0,
+      "unit": "simulator coefficient"
+    },
+    "angular_damping": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.0,
+      "nominal": 0.05,
+      "max": 0.15,
+      "unit": "simulator coefficient"
+    },
+    "spawn_x": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.04,
+      "nominal": 0.0,
+      "max": 0.04,
+      "unit": "m offset from seeded spawn"
+    },
+    "spawn_y": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.04,
+      "nominal": 0.0,
+      "max": 0.04,
+      "unit": "m offset from seeded spawn"
+    },
+    "spawn_yaw": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.523598775598,
+      "nominal": 0.0,
+      "max": 0.523598775598,
+      "unit": "rad offset from seeded yaw"
+    },
+    "inertia_scale": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.5,
+      "nominal": 1.0,
+      "max": 2.0,
+      "unit": "multiplier; synthetic independent inertia"
+    }
+  },
+  "minimum_baseline_success_rate": 0.9
+}

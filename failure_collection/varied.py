@@ -4,9 +4,7 @@ Run via scripts/collect_varied.sh; --plan-only writes no files and runs no physi
 """
 import argparse
 from collections import Counter
-from copy import deepcopy
 import hashlib
-import itertools
 import json
 from pathlib import Path
 import shutil
@@ -14,9 +12,10 @@ import shutil
 import numpy as np
 import torch
 from mani_skill.utils.structs.pose import Pose
+from mani_skill.utils.geometry.rotation_conversions import quaternion_multiply
 
 from .collect import ROOT, digest, rollout, runtime_metadata, write_json
-from .environment import CollectionEnv, normalized_properties
+from .environment import CollectionEnv
 from .schema import describe, save_episode, validate_episode
 
 from .grip_controller import install_strength_controller
@@ -32,7 +31,10 @@ class WeightedCollectionEnv(CollectionEnv):
     episode_schema_version = 'pick_failure_v3'
     collection_description = 'WeightedCollectionEnv: held object within 2.5cm of vertical goal, arm static'
 
-    def __init__(self, properties, *, reported_mass_kg, goal_clearance_m, grip_force_limits_n):
+    def __init__(self, properties, *, reported_mass_kg, goal_clearance_m, grip_force_limits_n,
+                 spawn_offset_m=None, spawn_yaw_offset_rad=0.0):
+        self.spawn_offset_m = [0.,0.] if spawn_offset_m is None else list(spawn_offset_m)
+        self.spawn_yaw_offset_rad = float(spawn_yaw_offset_rad)
         self.reported_mass_kg = float(reported_mass_kg)
         self.goal_clearance_m = float(goal_clearance_m)
         self.grip_force_limits_n = list(grip_force_limits_n)
@@ -45,6 +47,14 @@ class WeightedCollectionEnv(CollectionEnv):
     def _initialize_episode(self, env_idx, options):
         super()._initialize_episode(env_idx, options)
         self.agent.controller.controllers['gripper'].reset_env_idx = env_idx
+        if any(self.spawn_offset_m) or self.spawn_yaw_offset_rad:
+            pose = self.cube.pose.raw_pose.clone()
+            pose[:, :2] += torch.tensor(self.spawn_offset_m,device=self.device)
+            angle = self.spawn_yaw_offset_rad/2
+            yaw = torch.tensor([[np.cos(angle),0.,0.,np.sin(angle)]],device=self.device,dtype=pose.dtype)
+            pose[:, 3:] = quaternion_multiply(yaw,pose[:, 3:])
+            pose[:, 2] = self.support_height(pose[:, 3:])
+            self.cube.set_pose(Pose.create(pose))
         goal = self.cube.pose.p.clone()
         goal[:, 2] += self.goal_clearance_m
         self.goal_site.set_pose(Pose.create_from_pq(goal))
@@ -69,87 +79,7 @@ class WeightedCollectionEnv(CollectionEnv):
         return info
 
 
-def conditions(config):
-    """Deduplicate physics combinations, preserving every design membership.
-
-    All conditions share the same seed list. Thus mass-only comparisons share
-    positions, orientations and robot reset state. Geometry changes spawn height.
-    """
-    base = deepcopy(config['baseline'])
-    factors = config['factors']
-    known = set(normalized_properties()) | {'goal_clearance_m'}
-    if set(base) - known:
-        raise ValueError('Unknown baseline property')
-    if 'initial_pose_world' in base or 'goal_position_world' in base:
-        raise ValueError('This design uses seeded poses and a vertical goal')
-    seen_keys = set()
-    for name, levels in factors.items():
-        if not levels or any(not isinstance(level, dict) or not level for level in levels):
-            raise ValueError(f'Invalid levels for {name}')
-        keys = set(levels[0])
-        if keys - known or keys & seen_keys or any(set(level) != keys for level in levels):
-            raise ValueError(f'Overlapping or inconsistent factor {name}')
-        seen_keys |= keys
-    result = {}
-
-    def add(overrides, family):
-        values = deepcopy(base)
-        for override in overrides:
-            values.update(deepcopy(override))
-        height = values.pop('goal_clearance_m')
-        if not np.isfinite(height) or not .02 <= height <= .4:
-            raise ValueError('Goal clearance must be between .02 and .4 metres')
-        props = normalized_properties(values)
-        key = digest(dict(properties=props, goal_clearance_m=height))[:16]
-        if key not in result:
-            baseline_props = normalized_properties({k: v for k, v in base.items() if k != 'goal_clearance_m'})
-            changed = [k for k in props if props[k] != baseline_props[k]]
-            if height != base['goal_clearance_m']:
-                changed.append('goal_clearance_m')
-            result[key] = dict(condition_id=key, properties=props, goal_clearance_m=height,
-                               changed_properties=changed, design_families=[])
-        if family not in result[key]['design_families']:
-            result[key]['design_families'].append(family)
-
-    add([], 'baseline')
-    for name, levels in factors.items():
-        for level in levels:
-            add([level], 'single:' + name)
-    for a, b in config['paired_factors']:
-        left, right = factors[a], factors[b]
-        if len(left) != len(right):
-            raise ValueError('Paired factors require equally many ordered levels')
-        for x, y in zip(left, right):
-            add([x, y], f'together:{a}+{b}')
-        for x, y in zip(left, reversed(right)):
-            add([x, y], f'opposite:{a}+{b}')
-    for names in config['crossed_factors']:
-        for levels in itertools.product(*(factors[name] for name in names)):
-            add(levels, 'crossed:' + '+'.join(names))
-    rng = np.random.default_rng(config['design_seed'])
-    for _ in range(config['mixed_conditions']):
-        add([levels[int(rng.integers(len(levels)))] for levels in factors.values()], 'mixed')
-    return list(result.values())
-
-
-def load_settings(path, seed_count=None):
-    config = json.loads(Path(path).read_text())
-    if seed_count is not None:
-        config['seed_count'] = seed_count
-    allowed = {'baseline', 'factors', 'paired_factors', 'crossed_factors', 'design_seed',
-               'mixed_conditions', 'seed_count', 'start_seed', 'episode_steps',
-               'contact_threshold_n', 'reported_mass_kg'}
-    if set(config) != allowed:
-        raise ValueError(f'Config keys differ: {set(config) ^ allowed}')
-    for key in ('seed_count', 'episode_steps', 'mixed_conditions', 'start_seed', 'design_seed'):
-        if type(config[key]) is not int or config[key] < (1 if key in ('seed_count', 'episode_steps') else 0):
-            raise ValueError(f'Invalid {key}')
-    if config['start_seed'] + config['seed_count'] >= 2**31:
-        raise ValueError('Seed range exceeds 31 bits')
-    for key in ('reported_mass_kg', 'contact_threshold_n'):
-        if not np.isfinite(config[key]) or config[key] <= 0:
-            raise ValueError(f'Invalid {key}')
-    return config
+from .design import conditions, load_settings, write_plan
 
 
 def load_agent(checkpoint):
@@ -167,15 +97,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path, default=ROOT / 'configs/failure_collection_varied.json')
     parser.add_argument('--checkpoint', type=Path)
-    parser.add_argument('--output', type=Path, default=ROOT / 'runs/failure_collection/varied_fixed40g')
+    parser.add_argument('--output', type=Path, default=ROOT / 'runs/failure_collection/dense_single_pair_fixed40g')
     parser.add_argument('--seed-count', type=int, help='Override the single seed-count configuration value')
     parser.add_argument('--plan-only', action='store_true')
     parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--write-plan', type=Path, help='Write the configured ranges and experiment families as Markdown')
     args = parser.parse_args()
     config = load_settings(args.config, args.seed_count)
     plan = conditions(config)
     print(json.dumps(dict(conditions=len(plan), seeds=config['seed_count'],
-                         episodes=len(plan)*config['seed_count'], reported_mass_kg=config['reported_mass_kg'])), flush=True)
+                         episodes=len(plan)*config['seed_count'], reported_mass_kg=config['reported_mass_kg'],
+                         factors=sum(s['enabled'] for s in config['factors'].values()),
+                         max_changed_factors=max(len(c['changed_factors']) for c in plan))), flush=True)
+    if args.write_plan is not None:
+        write_plan(args.write_plan,config,plan)
     if args.plan_only:
         return
     if args.checkpoint is None:
@@ -209,6 +144,7 @@ def main():
             shutil.copy2(path, source/path.name)
         shutil.copy2(Path(__file__).with_name('MANISKILL_LICENSE'), source/'MANISKILL_LICENSE')
         write_json(output/'config.json', config)
+        write_plan(output/'plan.md',config,plan)
     write_json(output/'manifest.json', manifest)
     records = []
     try:
@@ -230,7 +166,9 @@ def main():
                                 env = WeightedCollectionEnv(condition['properties'],
                                     reported_mass_kg=config['reported_mass_kg'],
                                     goal_clearance_m=condition['goal_clearance_m'],
-                                    grip_force_limits_n=trained['settings']['grip_force_limits_n'])
+                                    grip_force_limits_n=trained['settings']['grip_force_limits_n'],
+                                    spawn_offset_m=condition['spawn_offset_m'],
+                                    spawn_yaw_offset_rad=condition['spawn_yaw_offset_rad'])
                             def policy(obs):
                                 if obs.shape != (1, 45):
                                     raise ValueError('Policy observation interface changed')
@@ -240,6 +178,10 @@ def main():
                                 'meta__experiment_identity': np.asarray(identity),
                                 'meta__episode_id': np.asarray(episode_id),
                                 'meta__checkpoint_sha256': np.asarray(checkpoint_hash),
+                                'label__changed_factors': np.asarray(condition['changed_factors'],dtype='U64'),
+                                'label__factor_values_json': np.asarray(json.dumps(condition['factor_values'],sort_keys=True)),
+                                'label__spawn_offset_xy_m': np.asarray(condition['spawn_offset_m']),
+                                'label__spawn_yaw_offset_rad': np.asarray(condition['spawn_yaw_offset_rad']),
                                 'label__condition_id': np.asarray(condition['condition_id']),
                                 'label__changed_properties': np.asarray(condition['changed_properties'], dtype='U64'),
                                 'label__design_families': np.asarray(condition['design_families']),
@@ -260,6 +202,7 @@ def main():
                         record = dict(episode_id=episode_id, file=path.name, seed=seed,
                             condition_id=condition['condition_id'], design_families=condition['design_families'],
                             changed_properties=condition['changed_properties'], properties=condition['properties'],
+                            changed_factors=condition['changed_factors'],factor_values=condition['factor_values'],
                             success=bool(data['label__success_final']), success_any=bool(data['label__success_any']),
                             failure_type=str(data['label__failure_type']), grasped=grasped,
                             bilateral_force_verified=bool(np.all(pair_peaks > config['contact_threshold_n'])))

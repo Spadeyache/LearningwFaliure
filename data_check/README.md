@@ -1,97 +1,94 @@
-# Simple, modular episode plots
+# Episode plots
 
-Edit **[plots.md](plots.md)**, then run one command:
+Read the saved collection and plot the actual parameter values, with **green
+circles for success** and **red crosses for failure**. No new robot trials.
 
 ```bash
 cd /home/ubuntu/faliure
 .venv/bin/python data_check/plot.py
 ```
 
-The default is **every row** in the Markdown: currently 46 plots covering all
-60 physical settings and 600 attempts.
+The default is the completed **29,830-episode** dense collection. The editable
+[plots_dense.md](plots_dense.md) defines **307 comparison plots** covering all
+2,983 settings:
 
-Each run creates a new folder inside `data_check/plots/`. Individual plots are
-saved immediately and appear in that folder's `index.html` as they finish.
-The page refreshes while rendering. At the end, the script combines the saved
-plots into one image and a zoomable viewer.
+- 18 single-variable views.
+- 136 same-direction and 136 opposite-direction numeric-pair views.
+- 17 shape × numeric-variable views.
 
-**[Open the run list](plots/index.html)** to choose an individual or combined view.
+Every comparison includes the same nominal reference attempts; these are shared
+references, not additional experiments. Only factors listed in the row may vary.
+Derived quantities can change with a factor (for example inertia with mass/size,
+or dynamic friction with static friction and its ratio).
 
-## The two code modules
+Each execution creates a folder under `data_check/plots/`. Plots appear as they
+finish, followed by **one combined scrolling view**, one comparison underneath
+another. Large combined views use several full-resolution PNG sheets so the
+browser can display them without shrinking the text.
 
-- **[plot.py](plot.py)** reads the Markdown, validates the isolation rules, draws
-  individual plots, and calls the combiner at the end.
-- **[combine_plots.py](combine_plots.py)** assembles saved PNGs into `combined.png`
-  and `combined.html`. It never re-runs the individual plot calculations.
+**[Open plot runs](plots/index.html)** or **[open the complete dense run](plots/dense_single_pair_all/index.html)**.
 
-The combined viewer has a zoom slider, Fit width, Full resolution, and scrolling.
-Click any tile to open its original full-size plot. The image contains all plots
-in the same order as their Markdown rows.
+## Axis and selection
 
-## Generate just one plot
+Dense plots show only the selected attempts in collection order. X-axis ticks
+retain their original episode numbers; unrelated episodes are omitted so a
+100-attempt comparison is readable within a 29,830-attempt dataset. The Y axis
+shows the actual setting and units. Use `--x-axis original` for a common full
+1–29,830 axis with unrelated attempts left blank.
+
+Starting-position/yaw factors are commanded offsets from each seed's reset pose;
+the complete initial pose is retained in the source data. Shape is categorical.
+Same/opposite directions describe sweep ordering, not an exact proportional law.
+
+## Run just one plot
 
 ```bash
 .venv/bin/python data_check/plot.py --only object_friction_only
+.venv/bin/python data_check/plot.py --only mass_object_friction_together
 ```
 
-This makes a new run with just that row and its combined view. To rebuild one
-plot inside an existing run while preserving its other unchanged plots:
+Use `--output data_check/plots/YOUR_RUN_FOLDER` to place results in a chosen run.
+With `--only`, unaffected unchanged plot rows in that run are retained. To combine
+existing PNGs again without recomputing the plots:
 
 ```bash
-.venv/bin/python data_check/plot.py --only object_friction_only --output data_check/plots/YOUR_RUN_FOLDER
+.venv/bin/python data_check/combine_plots.py data_check/plots/dense_single_pair_all
 ```
 
-The combined view is rebuilt from the available individual PNGs afterward.
-You can list several names after `--only`.
+The combined view defaults to one column; `--columns 3` is also supported.
 
-To recombine an existing run without recalculating any individual plots:
+## Edit the Markdown plan
 
-```bash
-.venv/bin/python data_check/combine_plots.py data_check/plots/YOUR_RUN_FOLDER
-```
-
-The combiner defaults to one vertical column and 1500 pixels per plot. The nominal
-reference stays inside each comparison; there is no standalone nominal row. Optional
-`--columns` and `--tile-width` let you change the combined layout.
-
-## Edit the plot list
-
-Each row under `## Plots` in **[plots.md](plots.md)** defines one PNG. For example:
-
-```markdown
-| custom_friction | object_friction | C04,C05 | yes | Object friction only |
-```
-
-- `Variables` lists the panels to draw.
-- `Conditions` selects exact collected settings from the Markdown catalog.
-- `Reference=yes` adds the nominal C01 attempts.
-- The script rejects hidden changes to variables not listed in the row.
-
-To validate edits without drawing anything:
+Each row under **Plots** defines one PNG: plot name, variable panels, condition
+IDs, whether to include nominal references, and title. Names identify saved
+conditions, not arbitrary combinations. The plotter rejects hidden extra changes
+and a plan fingerprint belonging to a different dataset.
 
 ```bash
 .venv/bin/python data_check/plot.py --check
 ```
 
-The default rows include eight single-variable plots,
-six same/opposite-direction pair plots, and 32 separate mixed settings. Nominal
-references are reused in comparisons; they are not additional collected trials.
+`--make-plan` regenerates the dense Markdown from the saved experiment families;
+it overwrites edits to that plan. Normal runs preserve your Markdown edits.
 
-## What is shown and saved
+## Original 600-episode plots
 
-The X axis retains original episode numbers 1–600. Each Y axis shows the listed
-parameter value. Successes are green circles; failures are red crosses. Unrelated
-episodes are blank. Each generated run contains:
+The original plan and outputs remain available. To regenerate them:
 
-- Individual PNGs and an immediately usable `index.html`.
-- One `combined.png` and zoomable `combined.html`.
-- `selections.json`: exact episodes used for each Markdown row.
-- `episodes.csv`: the original episode-number lookup.
-- `manifest.json`: source/code hashes and the combined image layout dimensions.
+```bash
+.venv/bin/python data_check/plot.py --dataset runs/failure_collection/varied_fixed40g --plan data_check/plots.md
+```
 
-Only NumPy, Matplotlib and Pillow from the existing project environment are
-needed. The original 600 episode files remain unchanged. No new robot trials,
-policy training, classifiers or PCA calculations are run by these scripts.
+That plan contains 46 rows covering the old 60 settings. Earlier analyses remain
+in `code_archive/` and `plots_archive/`.
 
-Earlier analysis is preserved in `plots_archive/` and `code_archive/`.
-`plots/run_initial_markdown/` preserves the first flat Markdown-driven output.
+## Files saved per run
+
+- Individual PNGs and `index.html`, updated as each plot finishes.
+- `combined.html`, combined PNG(s), and their tile layout.
+- `selections.json`: exact episodes included in each comparison.
+- `episodes.csv`: episode order, outcomes and all plotted factor values.
+- `manifest.json`: data/code fingerprints and verification that raw files stayed unchanged.
+
+Uses the existing NumPy, Matplotlib and Pillow dependencies. This workflow does
+not run failure discovery, classifiers, or policy training.

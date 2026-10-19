@@ -2,6 +2,7 @@
 """Combine a run's completed individual PNGs without recomputing its plots."""
 import argparse
 import json
+import html
 from pathlib import Path
 from PIL import Image
 
@@ -24,7 +25,17 @@ def combine(folder, columns=1, tile_width=1500):
     row_heights=[max(x['height'] for x in items[i:i+columns])+title_height for i in range(0,len(items),columns)]
     width=columns*tile_width+(columns+1)*padding
     height=sum(row_heights)+(len(row_heights)+1)*padding
-    # Keep the requested resolution explicit rather than silently shrinking text.
+    # Large plans use several full-resolution sheets in one scrolling viewer.
+    if height > 30000 or width*height > 180_000_000:
+        result = combine_sheets(folder, items, columns, tile_width, padding)
+        manifest_path = folder / 'manifest.json'
+        if manifest_path.exists():
+            import hashlib
+            manifest = json.loads(manifest_path.read_text())
+            manifest['combined'] = result
+            manifest['combiner_sha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+            manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+        return result
     if width*height>180_000_000:
         raise ValueError('Combined image too large; reduce --tile-width or split the plan into runs')
     canvas=Image.new('RGB',(width,height),'white')
@@ -62,6 +73,67 @@ const t=layout.tiles.find(t=>x>=t.x&&x<=t.x+t.width&&y>=t.y&&y<=t.y+t.height);if
         manifest['combiner_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
         manifest_path.write_text(json.dumps(manifest,indent=2)+'\n')
     return result
+
+
+def combine_sheets(folder, items, columns, tile_width, padding):
+    """Preserve readable text; show every sheet vertically in a single viewer."""
+    width = columns * tile_width + (columns + 1) * padding
+    batches, current, current_height = [], [], padding
+    for start in range(0, len(items), columns):
+        row = items[start:start + columns]
+        h = max(item['height'] for item in row) + padding
+        if current and current_height + h > min(24000, 60_000_000 // width):
+            batches.append(current)
+            current, current_height = [], padding
+        current.append(row)
+        current_height += h
+    if current:
+        batches.append(current)
+    pages = []
+    for number, batch in enumerate(batches, 1):
+        height = padding + sum(max(i['height'] for i in row) + padding for row in batch)
+        canvas = Image.new('RGB', (width, height), 'white')
+        tiles, y = [], padding
+        for row in batch:
+            row_height = max(i['height'] for i in row)
+            for col, item in enumerate(row):
+                x = padding + col * (tile_width + padding)
+                with Image.open(folder / item['entry']['file']) as image:
+                    image = image.convert('RGB').resize((tile_width, item['height']), Image.Resampling.LANCZOS)
+                    canvas.paste(image, (x, y))
+                tiles.append(dict(x=x, y=y, width=tile_width, height=item['height'],
+                                  file=item['entry']['file'], title=item['entry']['title']))
+            y += row_height + padding
+        name = f'combined_{number:03d}.png'
+        canvas.save(folder / name)
+        canvas.close()
+        pages.append(dict(file=name, width=width, height=height, tiles=tiles))
+    layout = dict(columns=columns, width=width, pages=pages, plots=len(items))
+    (folder / 'combined_layout.json').write_text(json.dumps(layout, indent=2) + '\n')
+    downloads = ' · '.join(f'<a href="{page["file"]}">PNG sheet {i}</a>' for i, page in enumerate(pages, 1))
+    images = ''.join(f'<img loading="lazy" data-page="{i}" src="{page["file"]}" alt="Combined comparison sheet {i+1}">'
+                     for i, page in enumerate(pages))
+    page = ('<!doctype html><meta charset="utf-8"><title>All comparison plots</title>'
+        '<style>body{margin:0;font:16px system-ui}header{position:sticky;top:0;background:#f1f4f8;padding:12px;z-index:2}'
+        '#view{overflow:auto;height:calc(100vh - 125px)}img{display:block;max-width:none;cursor:zoom-in}small{display:block}</style>'
+        f'<header><b>{len(items)} comparison plots · {columns} column(s) · one scrolling view</b> · '
+        '<a href="index.html">Individual plots</a><br>'
+        '<button id="fit">Fit width</button> <button id="full">Full resolution</button> '
+        '<label>Zoom <input id="zoom" type="range" min="10" max="150" value="100"></label><br>' + downloads +
+        '<small>Full-resolution PNGs are split into sheets to keep the browser usable. Click a plot to open its original.</small></header>'
+        '<div id="view">' + images + '</div><script>const layout=' + json.dumps(layout).replace('<','\\u003c') + ';'
+        'const view=document.getElementById("view"),slider=document.getElementById("zoom"),imgs=[...view.querySelectorAll("img")];'
+        'function scale(p){imgs.forEach(im=>im.style.width=(layout.width*p/100)+"px");slider.value=p}'
+        'slider.oninput=()=>scale(Number(slider.value));'
+        'document.getElementById("fit").onclick=()=>scale(Math.max(10,Math.min(150,(view.clientWidth-20)/layout.width*100)));'
+        'document.getElementById("full").onclick=()=>scale(100);'
+        'imgs.forEach(im=>im.onclick=e=>{const p=layout.pages[Number(im.dataset.page)],r=im.getBoundingClientRect(),'
+        'x=(e.clientX-r.left)*p.width/r.width,y=(e.clientY-r.top)*p.height/r.height;'
+        'const t=p.tiles.find(t=>x>=t.x&&x<=t.x+t.width&&y>=t.y&&y<=t.y+t.height);'
+        'if(t)window.open(t.file,"_blank","noopener")});document.getElementById("fit").click();</script>')
+    (folder / 'combined.html').write_text(page)
+    return dict(plots=len(items), columns=columns, width=width, sheets=len(pages),
+                files=[p['file'] for p in pages], file=pages[0]['file'], viewer='combined.html')
 
 
 def main():

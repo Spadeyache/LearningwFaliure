@@ -26,10 +26,23 @@ VARIABLES = {
     'goal_height': ('Lift height', 'cm', 100),
     'finger_friction': ('Finger friction', 'coefficient', 1),
     'table_friction': ('Table friction', 'coefficient', 1),
+    'dynamic_friction_ratio': ('Sliding / static friction ratio', 'ratio', 1),
+    'com_x': ('COM X offset', 'mm', 1000),
+    'com_y': ('COM Y offset', 'mm', 1000),
+    'com_z': ('COM Z offset', 'mm', 1000),
+    'restitution': ('Object restitution', 'coefficient', 1),
+    'linear_damping': ('Object linear damping', 'coefficient', 1),
+    'angular_damping': ('Object angular damping', 'coefficient', 1),
+    'spawn_x': ('Starting X offset', 'mm', 1000),
+    'spawn_y': ('Starting Y offset', 'mm', 1000),
+    'spawn_yaw': ('Starting yaw offset', 'degrees', 180 / np.pi),
+    'inertia_scale': ('Inertia scale', 'multiplier', 1),
 }
 
 
 def settings(condition):
+    if 'factor_values' in condition:
+        return dict(condition['factor_values'])
     p = condition['properties']
     return dict(mass=p['mass_kg'], object_friction=p['static_friction'],
                 size=p['size_xyz_m'][0], shape=p['shape'], com=p['com_offset_m'][0],
@@ -60,12 +73,12 @@ def read_requests(path):
         ids = []
         for part in conditions.split(','):
             part = part.strip()
-            if re.fullmatch(r'C\d{2}-C\d{2}', part):
+            if re.fullmatch(r'C\d{2,}-C\d{2,}', part):
                 low, high = [int(x[1:]) for x in part.split('-')]
                 if low > high:
                     raise ValueError('Condition ranges must ascend')
                 ids.extend(f'C{i:02d}' for i in range(low, high + 1))
-            elif re.fullmatch(r'C\d{2}', part):
+            elif re.fullmatch(r'C\d{2,}', part):
                 ids.append(part)
             else:
                 raise ValueError(f'{name}: invalid condition list {part!r}')
@@ -87,6 +100,7 @@ def load_episodes(dataset):
     conditions = {f'C{i:02d}': c for i, c in enumerate(manifest['conditions'], 1)}
     ids = {c['condition_id']: key for key, c in conditions.items()}
     rows, hashes = [], {}
+    dense = manifest.get('config', {}).get('design') in ('dense_single_pair', 'stock_single')
     for number, entry in enumerate(index, 1):
         name = entry['file']
         if Path(name).name != name or name in hashes:
@@ -102,13 +116,29 @@ def load_episodes(dataset):
                 raise ValueError('Outcome or experiment identity mismatch')
             actual = dict(mass=float(a['label__mass_kg']), object_friction=float(a['label__object_static_friction']),
                 size=float(a['label__size_xyz_m'][0]), shape=str(a['label__shape']), com=float(a['label__com_offset_m'][0]),
-                goal_height=float(a['label__goal_clearance_m']), finger_friction=float(a['label__finger_static_friction'].mean()),
+                goal_height=float(a['label__goal_height_range_max_m'] if manifest.get('config', {}).get('design') == 'stock_single' else a['label__goal_clearance_m']), finger_friction=float(a['label__finger_static_friction'].mean()),
                 table_friction=float(a['label__table_static_friction']))
+            if dense:
+                static = float(a['label__object_static_friction'])
+                shape = str(a['label__shape'])
+                mass = float(a['label__mass_kg'])
+                size = float(a['label__size_xyz_m'][0])
+                primitive_inertia = mass * size**2 * (.1 if shape == 'sphere' else 1/6)
+                actual.update(dynamic_friction_ratio=float(a['label__object_dynamic_friction']) / static,
+                    com_x=float(a['label__com_offset_m'][0]), com_y=float(a['label__com_offset_m'][1]),
+                    com_z=float(a['label__com_offset_m'][2]), restitution=float(a['label__object_restitution']),
+                    linear_damping=float(a['label__linear_damping']), angular_damping=float(a['label__angular_damping']),
+                    spawn_x=float(a['label__spawn_offset_xy_m'][0]), spawn_y=float(a['label__spawn_offset_xy_m'][1]),
+                    spawn_yaw=float(a['label__spawn_yaw_offset_rad']),
+                    inertia_scale=float(a['label__inertia_principal_kg_m2'].mean()) / primitive_inertia)
+                actual.pop('com')
         expected = settings(conditions[cid])
-        for variable in VARIABLES:
+        for variable in expected:
             equal = actual[variable] == expected[variable] if variable == 'shape' else np.isclose(actual[variable], expected[variable], rtol=1e-6, atol=1e-8)
             if not equal:
                 raise ValueError('Physics readback differs from condition: ' + variable)
+        if number % 2000 == 0:
+            print(f'Validated {number}/{len(index)} episode files.', flush=True)
         rows.append(dict(episode=number, file=name, condition=cid, seed=entry['seed'], success=success,
                          values=expected, actual=actual))
     if len(index) != len(list(dataset.glob('*.npz'))):
@@ -127,7 +157,7 @@ def select(request, conditions, rows):
     base = settings(conditions[nominal])
     for cid in selected:
         values = settings(conditions[cid])
-        hidden = [v for v in VARIABLES if v not in request['variables'] and values[v] != base[v]]
+        hidden = [v for v in base if v not in request['variables'] and values[v] != base[v]]
         if hidden:
             raise ValueError(f"{request['name']}: {cid} also changes unlisted variables {hidden}")
     result = [row for row in rows if row['condition'] in selected]
@@ -136,10 +166,11 @@ def select(request, conditions, rows):
     return result, sum(row['condition'] == nominal for row in result)
 
 
-def draw(request, rows, total, nominal_count, output):
+def draw(request, rows, total, nominal_count, output, x_axis='original'):
     fig, axes = plt.subplots(len(request['variables']), 1, sharex=True, squeeze=False,
                              figsize=(20, max(4, 2.4 * len(request['variables']))))
-    x = np.array([r['episode'] for r in rows])
+    original_x = np.array([r['episode'] for r in rows])
+    x = np.arange(1, len(rows) + 1) if x_axis == 'selected' else original_x
     success = np.array([r['success'] for r in rows])
     for variable, ax in zip(request['variables'], axes.flat):
         title, unit, scale = VARIABLES[variable]
@@ -149,14 +180,26 @@ def draw(request, rows, total, nominal_count, output):
             ax.set_yticks(range(len(levels)), levels); ax.set_ylim(-.35, len(levels) - .65)
         else:
             y = np.array(values) * scale; levels = sorted(set(y)); ax.set_yticks(levels)
+            if len(levels) > 8:
+                # Closely spaced sweep levels otherwise overlap (e.g. 0.37/0.40).
+                # All actual values remain plotted and are saved in episodes.csv.
+                ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=8))
             margin = max((max(levels) - min(levels)) * .2, .01)
             ax.set_ylim(min(levels) - margin, max(levels) + margin)
         for mask, color, marker, label in [(success, '#17864b', 'o', 'Success'), (~success, '#d43f3a', 'x', 'Failure')]:
             ax.scatter(x[mask], y[mask], c=color, marker=marker, s=19, linewidths=.85, alpha=.85, label=label, zorder=3)
-        ax.set_xlim(.5, total + .5); ax.set_xticks([1, *range(50, total + 1, 50)])
+        if x_axis == 'selected':
+            positions = np.unique(np.linspace(0, len(rows) - 1, min(10, len(rows)), dtype=int))
+            ax.set_xlim(.5, len(rows) + .5)
+            ax.set_xticks(x[positions], original_x[positions])
+        else:
+            ticks = [1, *range(50, total + 1, 50)] if total <= 1000 else np.linspace(1, total, 10, dtype=int)
+            ax.set_xlim(.5, total + .5); ax.set_xticks(ticks)
         ax.set_ylabel(title + '\n(' + unit + ')'); ax.grid(alpha=.2)
     axes[0, 0].legend(loc='upper right', ncol=2)
-    axes[-1, 0].set_xlabel(f'Original collection episode number 1–{total}; unrelated episodes are blank')
+    xlabel = ('Original episode numbers; selected attempts in collection order, unrelated attempts omitted'
+              if x_axis == 'selected' else f'Original collection episode number 1–{total}; unrelated episodes are blank')
+    axes[-1, 0].set_xlabel(xlabel)
     fig.suptitle('\n'.join(textwrap.wrap(request['title'], 110)), fontsize=15)
     fig.text(.01, .01, f'{len(rows)} displayed attempts; {nominal_count} nominal references. Green = success; red = failure. Settings outside the listed variables stay nominal.', fontsize=9)
     fig.tight_layout(rect=(0, .06, 1, .94))
@@ -165,10 +208,11 @@ def draw(request, rows, total, nominal_count, output):
 
 def write_gallery(report, folder, finished=False):
     refresh = '' if finished else '<meta http-equiv="refresh" content="5">'
-    combined = '<a href="combined.html"><b>Open all plots combined</b></a> · <a href="combined.png">Combined PNG</a>' if (folder/'combined.html').exists() else 'Individual plots appear below as they finish. The combined view is built at the end.'
+    sheet = 'combined.png' if (folder/'combined.png').exists() else 'combined_001.png'
+    combined = f'<a href="combined.html"><b>Open all plots combined</b></a> · <a href="{sheet}">Combined PNG / first sheet</a>' if (folder/'combined.html').exists() else 'Individual plots appear below as they finish. The combined view is built at the end.'
     sections = [f'<!doctype html><html><head><meta charset="utf-8">{refresh}<title>Isolated experiment plots</title><style>body{{font:16px system-ui;margin:28px;max-width:1450px;color:#17202a}}img{{width:100%}}section{{margin:35px 0;border-top:1px solid #ddd}}a{{color:#175a99}}</style></head><body>',
         '<h1>Isolated experiment plots</h1>', f'<p>{"Complete" if finished else "Rendering"}: {len(report)} plots ready. {combined}</p>',
-        '<p>Green circles succeed; red crosses fail. Original episode numbers are retained; unrelated trials are blank.</p><ul>']
+        '<p>Green circles succeed; red crosses fail. Original episode numbers are retained. Dense plots omit unrelated attempts; older plots leave them blank.</p><ul>']
     for r in report:
         sections.append(f'<li><a href="#{r["name"]}">{html.escape(r["title"])}</a> ({r["count"]} attempts)</li>')
     sections.append('</ul>')
@@ -191,16 +235,70 @@ def update_run_list():
     (root/'index.html').write_text('\n'.join(lines))
 
 
+def write_dense_plan(manifest, dataset, path):
+    """One editable row per collected family; no invented factorial combinations."""
+    conditions = manifest['conditions']
+    families = {}
+    for i, condition in enumerate(conditions, 1):
+        for family in condition['design_families']:
+            if family != 'baseline':
+                families.setdefault(family, []).append(f'C{i:02d}')
+    priority = {'single': 0, 'together': 1, 'opposite': 2, 'categorical_cross': 3}
+    families = dict(sorted(families.items(), key=lambda item: (priority[item[0].split(':')[0]], item[0])))
+    lines = ['# Dense collection plot plan', '',
+        f'Dataset: `{dataset.resolve()}`.', f'Dataset fingerprint: `{manifest["identity"]}`', '',
+        f'{len(conditions)} settings; {len(families)} plots. Each comparison includes the shared nominal attempts.',
+        'Edit rows under **Plots** to choose comparisons. Conditions are listed in collection order.',
+        'Same/opposite direction describes the ordered parameter sweeps, not an exact physical proportional law.',
+        'Shape crossings are categorical and have no same/opposite interpretation.',
+        'Linked physical quantities may change: object dynamic friction = static friction × ratio; inertia follows mass/size unless independently scaled.',
+        'Starting-position/yaw rows show commanded offsets from each seed’s reset pose; all episodes retain the complete initial pose.', '',
+        '## Variables', '', '| Variable | Meaning | Plot unit |', '| --- | --- | --- |']
+    for variable in sorted(conditions[0]['factor_values']):
+        title, unit, _ = VARIABLES[variable]
+        lines.append(f'| {variable} | {title} | {unit} |')
+    lines += ['', '## Plots', '', '| Plot | Variables | Conditions | Reference | Title |', '| --- | --- | --- | --- | --- |']
+    for family, ids in families.items():
+        kind, names = family.split(':')
+        variables = names.split('+')
+        name = names.replace('+', '_') + ('_only' if kind == 'single' else '_' + kind)
+        title = ' + '.join(VARIABLES[v][0] for v in variables)
+        title += {'single': ' only; other factors nominal', 'together': ': same-direction sweep',
+                  'opposite': ': opposite-direction sweep', 'categorical_cross': ': shape crossing'}[kind]
+        lines.append(f'| {name} | {",".join(variables)} | {",".join(ids)} | yes | {title} |')
+    lines += ['', '## Condition lookup', '', '| ID | Saved condition ID | Deliberately changed factors | Values |', '| --- | --- | --- | --- |']
+    for i, condition in enumerate(conditions, 1):
+        changed = condition['changed_factors']
+        values = ', '.join(f'{v}={condition["factor_values"][v]}' for v in changed) or 'nominal'
+        lines.append(f'| C{i:02d} | {condition["condition_id"]} | {",".join(changed) or "none"} | {values} |')
+    Path(path).write_text('\n'.join(lines) + '\n')
+
+
 def main():
     from datetime import datetime
     from zoneinfo import ZoneInfo
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--plan', type=Path, default=HERE/'plots.md')
-    parser.add_argument('--dataset', type=Path, default=HERE.parent/'runs/failure_collection/varied_fixed40g')
+    parser.add_argument('--plan', type=Path, help='Editable Markdown plan (dense or legacy default chosen from dataset)')
+    parser.add_argument('--make-plan', action='store_true', help='Regenerate the dense Markdown plan from saved condition families')
+    parser.add_argument('--x-axis', choices=['original','selected'], help='Dense default: selected attempts, labeled with original episode numbers')
+    parser.add_argument('--dataset', type=Path, default=HERE.parent/'runs/failure_collection/dense_single_pair_fixed40g')
     parser.add_argument('--output', type=Path, help='Optional run folder; otherwise create a fresh timestamped folder')
     parser.add_argument('--only', nargs='+', help='Generate only these Markdown plot names; default is every row')
     parser.add_argument('--check', action='store_true', help='Validate every Markdown row without drawing plots')
     args = parser.parse_args()
+    header = json.loads((args.dataset / 'manifest.json').read_text())
+    stock = header.get('config', {}).get('design') == 'stock_single'
+    dense = header.get('config', {}).get('design') in ('dense_single_pair', 'stock_single')
+    if stock:
+        if header['status'] != 'complete':
+            parser.error('Stock sweep is not complete: ' + header['status'] + '. See baseline_check.json; no full sweep plots can be generated.')
+        VARIABLES['goal_height'] = ('Maximum native goal-height range', 'cm', 100)
+    args.plan = args.plan or HERE / ('plots_stock_short.md' if stock else 'plots_dense.md' if dense else 'plots.md')
+    if args.make_plan or (dense and not args.plan.exists()):
+        if not dense:
+            parser.error('--make-plan is for dense single/pair datasets')
+        write_dense_plan(header, args.dataset, args.plan)
+    x_axis = args.x_axis or ('selected' if dense else 'original')
     text, all_requests = read_requests(args.plan)
     manifest, conditions, episodes, hashes = load_episodes(args.dataset)
     fingerprint = re.search(r'^Dataset fingerprint: `([^`]+)`',text,re.M)
@@ -243,10 +341,10 @@ def main():
     update_run_list()
     print('Run folder:',output,flush=True)
     for request,rows,refs in selections:
-        draw(request,rows,len(episodes),refs,output/(request['name']+'.png'))
+        draw(request,rows,len(episodes),refs,output/(request['name']+'.png'),x_axis=x_axis)
         byname[request['name']] = dict(**request,file=request['name']+'.png',count=len(rows),
             successes=sum(r['success'] for r in rows),nominal_references=refs,
-            episodes=[r['episode'] for r in rows],condition_ids=sorted({r['condition'] for r in rows}))
+            x_axis=x_axis, episodes=[r['episode'] for r in rows],condition_ids=sorted({r['condition'] for r in rows}))
         report = sorted(byname.values(),key=lambda r:order[r['name']])
         (output/'selections.json').write_text(json.dumps(report,indent=2)+'\n')
         write_gallery(report,output)
@@ -255,9 +353,10 @@ def main():
         if hashlib.sha256((args.dataset/name).read_bytes()).hexdigest()!=before:
             raise RuntimeError('A source episode changed during plotting')
     with (output/'episodes.csv').open('w',newline='') as f:
-        writer=csv.writer(f);writer.writerow(['episode','file','condition','seed','success',*VARIABLES])
+        variables = list(episodes[0]['actual'])
+        writer=csv.writer(f);writer.writerow(['episode','file','condition','seed','success',*variables])
         for row in episodes:
-            writer.writerow([row['episode'],row['file'],row['condition'],row['seed'],row['success'],*[row['actual'][v] for v in VARIABLES]])
+            writer.writerow([row['episode'],row['file'],row['condition'],row['seed'],row['success'],*[row['actual'][v] for v in variables]])
     print('Building combined view from the saved PNGs...',flush=True)
     from combine_plots import combine
     combined = combine(output)
@@ -265,7 +364,8 @@ def main():
     (output/'manifest.json').write_text(json.dumps(dict(plan_sha256=hashlib.sha256(text.encode()).hexdigest(),
         script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         combiner_sha256=hashlib.sha256(Path(__file__).with_name('combine_plots.py').read_bytes()).hexdigest(),
-        dataset=str(args.dataset.resolve()),source_episode_sha256=hashes,source_unchanged=True,
+        dataset=str(args.dataset.resolve()),dataset_identity=manifest['identity'],x_axis=x_axis,
+        source_episode_sha256=hashes,source_unchanged=True,
         requested_plots=sorted(selected_names),plot_count=len(report),combined=combined),indent=2)+'\n')
     update_run_list()
     print(f'Done: {len(report)} plots + one combined image/view. Original episode hashes unchanged.',flush=True)

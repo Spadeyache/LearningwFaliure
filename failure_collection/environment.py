@@ -29,6 +29,8 @@ DEFAULT_PROPERTIES = {
     "static_friction": 0.3,
     "dynamic_friction": 0.3,
     "restitution": 0.0,
+    "linear_damping": 0.0,
+    "angular_damping": 0.05,
     "finger_friction": 2.0,
     "table_friction": 0.3,
     "initial_pose_world": None,
@@ -69,7 +71,7 @@ def normalized_properties(properties: dict | None = None) -> dict:
     if result["shape"] in ("cube", "sphere") and not np.allclose(size, size[0], rtol=1e-7, atol=1e-10):
         raise ValueError("cube/sphere require equal size_xyz_m extents; use box otherwise")
     result["size_xyz_m"] = size.tolist()
-    for name in ("mass_kg", "static_friction", "dynamic_friction", "restitution", "finger_friction", "table_friction"):
+    for name in ("mass_kg", "static_friction", "dynamic_friction", "restitution", "finger_friction", "table_friction", "linear_damping", "angular_damping"):
         value = float(result[name])
         if not np.isfinite(value) or value < 0 or (name == "mass_kg" and value == 0):
             raise ValueError(f"{name} must be finite and {'positive' if name == 'mass_kg' else 'nonnegative'}")
@@ -161,6 +163,8 @@ class CollectionEnv(PickCubeEnv):
         else:
             inertia = mass * (np.sum(size**2) - size**2) / 12
         for body in self.cube._bodies:
+            body.set_linear_damping(self.properties["linear_damping"])
+            body.set_angular_damping(self.properties["angular_damping"])
             body.set_mass(mass)
             body.set_cmass_local_pose(sapien.Pose(p=self.properties["com_offset_m"]))
             body.set_inertia(inertia)

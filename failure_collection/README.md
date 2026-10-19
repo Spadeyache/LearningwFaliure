@@ -1,75 +1,96 @@
+For the new **short official-policy experiment**, see [STOCK_SHORT.md](STOCK_SHORT.md). It is separate from the weighted-policy collection described below.
+
 # Current data collection
 
-This folder contains only the fixed-40-gram-estimate collector. It runs the
-trained 45-input / 5-action policy without training it, varying actual physical
-properties and recording one compressed NPZ per episode.
+The collector runs a fixed trained pick-and-lift policy, keeps its reported mass
+at **40 g**, and saves one NPZ per attempt. Actual physical properties vary.
 
-## Existing dataset
-
-`/home/ubuntu/faliure/runs/failure_collection/varied_fixed40g/` contains 600 episodes:
-60 physical conditions × 10 starting seeds, with 202 final successes and 398 failures.
-The dataset and its original source snapshots are preserved unchanged. Source
-snapshots document the version that produced those results; they are not active
-collection entry points.
-
-Each episode records continuous object/gripper poses, relative pose, object–gripper
-and object–goal distances, finger width, forces, all five commanded actions,
-actual motor caps, actual physical properties, initial state, seed, varied-property
-labels, and success/failure. No residuals, clustering, or recovery retries are
-produced. Motion-event labels such as miss and drop are heuristic descriptions.
-Measurable signals are ideal simulator sensor proxies; simulator truth is kept
-separate from deployment-model inputs.
-
-The policy always receives a 40 g mass estimate, converted to newtons. Actual
-mass, object/finger/table friction, size, shape, COM offset, and lift height vary.
-The design includes single-variable controls, same-direction and opposite-direction
-pairs, a mass/friction grid, and mixed conditions. Seeds are reused across
-conditions and physics is rebuilt for every episode. Attempts last 5 seconds;
-final success requires holding the object within 2.5 cm of the vertical goal
-with each arm joint speed at most 0.2 rad/s.
-
-## Run a new collection
-
-The existing default output is complete. Choose a new output directory:
+## Next collection: dense singles and pairs
 
 ```bash
 cd /home/ubuntu/faliure
-bash scripts/collect_varied.sh --seed-count 50 --output runs/failure_collection/varied_3000
+bash scripts/collect_varied.sh
 ```
 
-This collects 3,000 episodes. Change `--seed-count` or `seed_count` in
-`configs/failure_collection_varied.json`; total episodes = 60 × seed count.
-Use `--plan-only` to print counts without running physics. For a newly started
-collection, repeat its exact command with `--resume` after an interruption.
-Resume requires identical code, policy and configuration. The preserved 600-run
-collection predates this code cleanup, so it must not be resumed with the changed
-source fingerprint. Read/analyze those NPZs directly; they remain fully supported.
+Defaults: **2,983 settings × 10 starting seeds = 29,830 episodes**, saved to
+`runs/failure_collection/dense_single_pair_fixed40g/`.
 
-## Active files
+No condition deliberately changes more than **two declared factors**. All
+single-factor comparisons are included. Every numeric pair is swept in both
+same and opposite directions. Shape is categorical and crossed with every
+numeric factor. These are pair-direction sweeps, not a full 2D factorial grid.
 
-- `varied.py`: experiment design, fixed-weight policy interface and collection CLI.
-- `collect.py`: shared episode runner, reset/provenance recording and utilities.
-- `environment.py`: physical object construction, properties and contact sampling hook.
-- `recording.py`: continuous movement, forces, commands and distances.
-- `outcomes.py` and `events.py`: outcome and sampled failure-event labels.
-- `schema.py`: validation, atomic NPZ saving and deployment-input-only loading.
-- `inference.py` and `grip_controller.py`: pinned inference-only policy interface and strength controller.
-- `__init__.py`: package schema definitions.
+The 18 controllable factors are:
 
-The collector pins its inference architecture and strength controller locally so
-changes to training code cannot silently change this experiment. It uses the saved
-October 9 checkpoint. Training code and other policy-evaluation tools remain separate
-and unchanged in `learning-withoutCLI/`.
+- Actual mass; object friction; sliding/static-friction ratio.
+- Finger friction; table friction; uniform object size; cube/sphere shape.
+- COM X, Y and Z offsets.
+- Required lift height; restitution (bounciness).
+- Linear and angular damping; independent inertia scale.
+- Spawn X, Y and yaw offsets from the seeded starting state.
 
-## Checks
+Numeric factors have 11 evenly spaced values over each configured range, plus
+the nominal value if it is not already on that grid. For example, the mass sweep
+uses 40, 86, **100 nominal**, 132, 178, 224, 270, 316, 362, 408, 454 and 500 g.
+Pair sweeps use 11 synchronized range positions in each direction. Duplicate
+settings are collected once, retaining every applicable design-family label.
+
+Edit `configs/failure_collection_varied.json`:
+
+- `levels_per_factor`: numeric resolution (default 11).
+- `seed_count`: number of starting setups repeated per setting (default 10).
+- Each factor's `min`, `nominal`, `max`, or categorical `values`.
+- Set a factor's `enabled` to `false` to hold it nominal and reduce the workload.
+
+Preview counts and save a readable plan without running episodes:
 
 ```bash
-cd /home/ubuntu/faliure
-.venv/bin/python -m unittest discover -s tests -p 'test_collection_*.py' -q
-MS_ASSET_DIR=/home/ubuntu/faliure/.maniskill/assets MS_SKIP_ASSET_DOWNLOAD_PROMPT=1 \
-VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
-RUN_MANISKILL_INTEGRATION=1 .venv/bin/python -m unittest discover -s tests -p 'test_collection_simulation.py' -v
+bash scripts/collect_varied.sh --plan-only --write-plan configs/failure_collection_plan.md
 ```
 
-The opt-in integration check compares two fresh trajectories with the preserved
-600-episode dataset, including commands, sensor signals, contact forces and outcomes.
+For a smaller new collection or a different output folder:
+
+```bash
+bash scripts/collect_varied.sh --seed-count 2 --output runs/failure_collection/dense_two_seeds
+```
+
+Resume an interrupted run using its exact original command plus `--resume`.
+Config, policy and code fingerprints must match. Every episode starts with a
+fresh physics scene and uses the same seed set across conditions.
+
+## What is recorded
+
+Continuous object/gripper poses, relative motion, object–gripper and object–goal
+distances, finger width, contact forces, all five actions, and motor caps.
+Simulator labels record mass, friction, geometry, COM, inertia, damping, initial
+pose, seed, outcome and heuristic failure events. Each new episode also records
+`changed_factors`, the full `factor_values_json`, pair direction, and spawn offsets.
+
+Success requires holding the object within 2.5 cm of its vertical goal with
+arm joint speeds at most 0.2 rad/s at the end of the five-second attempt.
+The policy receives 45 observations and produces five actions. Its local
+inference architecture/controller are pinned to the saved October 9 checkpoint.
+
+Factor counts refer to independent experiment controls: mass/size naturally
+change derived inertia; object friction and its ratio determine static/sliding
+coefficients; spawn offsets move the vertical goal's XY too. Inertia scaling is
+an explicitly synthetic independent inertia intervention. The policy's weight
+estimate and learned weights remain fixed.
+
+## Existing data and plotting
+
+The earlier 600 episodes in `runs/failure_collection/varied_fixed40g/` remain
+unchanged (202 successes, 398 failures). Their saved config/source describe their
+older coarse experiment; do not resume them with this new design.
+
+`data_check/plots.md` currently describes that 600-episode dataset. A new dataset
+needs its own condition/plot list; it must not reuse the old condition IDs.
+See `configs/failure_collection_plan.md` for the full new range/family inventory.
+
+## Code
+
+- `design.py`: ranges, dense conditions, all pair directions and two-factor guard.
+- `varied.py`: fixed-weight policy interface and collection CLI.
+- `environment.py`: physical construction and property readbacks.
+- `collect.py`, `recording.py`: resets, continuous logging and archive metadata.
+- `outcomes.py`, `events.py`, `schema.py`: labels, validation and saving.

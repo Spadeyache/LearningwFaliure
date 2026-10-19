@@ -1,44 +1,158 @@
 {
-  "reported_mass_kg": 0.04,
+  "design": "dense_single_pair",
+  "levels_per_factor": 11,
   "seed_count": 10,
   "start_seed": 2000,
   "episode_steps": 100,
   "contact_threshold_n": 0.05,
-  "design_seed": 17,
-  "mixed_conditions": 32,
-  "baseline": {
-    "mass_kg": 0.1,
-    "static_friction": 0.4,
-    "dynamic_friction": 0.4,
-    "finger_friction": 0.2,
-    "table_friction": 0.3,
-    "shape": "cube",
-    "size_xyz_m": [0.04, 0.04, 0.04],
-    "com_offset_m": [0, 0, 0],
-    "goal_clearance_m": 0.2
-  },
+  "reported_mass_kg": 0.04,
+  "pair_design": "all_directions",
   "factors": {
-    "mass": [{"mass_kg": 0.04}, {"mass_kg": 0.1}, {"mass_kg": 0.5}],
-    "object_friction": [
-      {"static_friction": 0.1, "dynamic_friction": 0.1},
-      {"static_friction": 0.4, "dynamic_friction": 0.4},
-      {"static_friction": 1.0, "dynamic_friction": 1.0}
-    ],
-    "size": [
-      {"size_xyz_m": [0.03, 0.03, 0.03]},
-      {"size_xyz_m": [0.04, 0.04, 0.04]},
-      {"size_xyz_m": [0.05, 0.05, 0.05]}
-    ],
-    "shape": [{"shape": "cube"}, {"shape": "sphere"}],
-    "com": [
-      {"com_offset_m": [-0.005, 0, 0]},
-      {"com_offset_m": [0, 0, 0]},
-      {"com_offset_m": [0.005, 0, 0]}
-    ],
-    "goal_height": [{"goal_clearance_m": 0.1}, {"goal_clearance_m": 0.2}, {"goal_clearance_m": 0.3}],
-    "finger_friction": [{"finger_friction": 0.1}, {"finger_friction": 0.2}, {"finger_friction": 0.5}],
-    "table_friction": [{"table_friction": 0.1}, {"table_friction": 0.3}, {"table_friction": 0.8}]
-  },
-  "paired_factors": [["mass", "object_friction"], ["mass", "size"], ["mass", "goal_height"]],
-  "crossed_factors": [["mass", "object_friction"]]
+    "mass": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.04,
+      "nominal": 0.1,
+      "max": 0.5,
+      "unit": "kg"
+    },
+    "object_friction": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.1,
+      "nominal": 0.4,
+      "max": 1.0,
+      "unit": "coefficient"
+    },
+    "dynamic_friction_ratio": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.25,
+      "nominal": 1.0,
+      "max": 1.0,
+      "unit": "sliding/static ratio"
+    },
+    "finger_friction": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.1,
+      "nominal": 0.2,
+      "max": 0.5,
+      "unit": "coefficient"
+    },
+    "table_friction": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.1,
+      "nominal": 0.3,
+      "max": 0.8,
+      "unit": "coefficient"
+    },
+    "size": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.03,
+      "nominal": 0.04,
+      "max": 0.05,
+      "unit": "m; uniform side or diameter"
+    },
+    "shape": {
+      "type": "categorical",
+      "enabled": true,
+      "values": [
+        "cube",
+        "sphere"
+      ],
+      "nominal": "cube",
+      "unit": "category"
+    },
+    "com_x": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.005,
+      "nominal": 0.0,
+      "max": 0.005,
+      "unit": "m"
+    },
+    "com_y": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.005,
+      "nominal": 0.0,
+      "max": 0.005,
+      "unit": "m"
+    },
+    "com_z": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.005,
+      "nominal": 0.0,
+      "max": 0.005,
+      "unit": "m"
+    },
+    "goal_height": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.1,
+      "nominal": 0.2,
+      "max": 0.3,
+      "unit": "m"
+    },
+    "restitution": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.0,
+      "nominal": 0.0,
+      "max": 0.5,
+      "unit": "coefficient"
+    },
+    "linear_damping": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.0,
+      "nominal": 0.0,
+      "max": 1.0,
+      "unit": "simulator coefficient"
+    },
+    "angular_damping": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.0,
+      "nominal": 0.05,
+      "max": 0.5,
+      "unit": "simulator coefficient"
+    },
+    "spawn_x": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.04,
+      "nominal": 0.0,
+      "max": 0.04,
+      "unit": "m offset from seeded spawn"
+    },
+    "spawn_y": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.04,
+      "nominal": 0.0,
+      "max": 0.04,
+      "unit": "m offset from seeded spawn"
+    },
+    "spawn_yaw": {
+      "type": "numeric",
+      "enabled": true,
+      "min": -0.523598775598,
+      "nominal": 0.0,
+      "max": 0.523598775598,
+      "unit": "rad offset from seeded yaw"
+    },
+    "inertia_scale": {
+      "type": "numeric",
+      "enabled": true,
+      "min": 0.5,
+      "nominal": 1.0,
+      "max": 2.0,
+      "unit": "multiplier; synthetic independent inertia"
+    }
+  }
 }
