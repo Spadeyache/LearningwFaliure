@@ -6,9 +6,9 @@ import tempfile
 import unittest
 import json
 import numpy as np
-from failure_collection.varied import ROOT, conditions, load_settings
-from failure_collection.design import levels
-from failure_collection.schema import validate_episode
+from robot_adaptation.collection.varied import ROOT, conditions, load_settings
+from robot_adaptation.collection.design import levels
+from robot_adaptation.collection.schema import validate_episode
 from test_collection_schema import episode_fixture
 
 

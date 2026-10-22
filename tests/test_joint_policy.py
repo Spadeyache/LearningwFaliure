@@ -1,7 +1,6 @@
 """Policy math and gradients only: no environments, rollouts or optimizer steps."""
 
 from io import BytesIO
-import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -10,10 +9,7 @@ import torch
 from torch.distributions import Normal
 
 
-POLICY_PATH = Path(__file__).resolve().parents[1] / "learning-withoutCLI" / "ppo.py"
-SPEC = importlib.util.spec_from_file_location("joint_policy_under_test", POLICY_PATH)
-POLICY = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(POLICY)
+from robot_adaptation.policy import model as POLICY
 
 
 def memory_checkpoint(state_dict):

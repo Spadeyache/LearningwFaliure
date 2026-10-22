@@ -1,3 +1,2 @@
-"""Versioned, sensor-separated robot picking episode collection."""
-
-SCHEMA_VERSION = "pick_failure_v2"
+"""Compatibility namespace; use robot_adaptation.collection."""
+from robot_adaptation.collection import SCHEMA_VERSION

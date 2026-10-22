@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 import numpy as np
 
-from failure_collection.stock import make_plan, validate_config, StockCollectionEnv
+from robot_adaptation.collection.stock import make_plan, validate_config, StockCollectionEnv
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from failure_collection.events import episode_events
+from robot_adaptation.collection.events import episode_events
 
 
 def episode(grasp=(False, True, True, True, True, True), success=False):

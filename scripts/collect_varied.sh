@@ -9,4 +9,4 @@ export MS_ASSET_DIR="${MS_ASSET_DIR:-${collection_root}/.maniskill/assets}"
 export MS_SKIP_ASSET_DOWNLOAD_PROMPT=1
 export VK_ICD_FILENAMES="${VK_ICD_FILENAMES:-/usr/share/vulkan/icd.d/lvp_icd.x86_64.json}"
 export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/failure-mpl}"
-exec "$collection_python" -m failure_collection.varied --checkpoint "$collection_checkpoint" "$@"
+exec "$collection_python" -m robot_adaptation.collection.varied --checkpoint "$collection_checkpoint" "$@"

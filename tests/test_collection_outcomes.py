@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from failure_collection.outcomes import classify_outcome
+from robot_adaptation.collection.outcomes import classify_outcome
 
 
 class OutcomeTests(unittest.TestCase):

@@ -11,9 +11,9 @@ import numpy as np
 class CollectionSimulationTests(unittest.TestCase):
     def test_current_collection_still_matches_saved_trajectories(self):
         import torch
-        from failure_collection.collect import rollout
-        from failure_collection.schema import validate_episode
-        from failure_collection.varied import WeightedCollectionEnv, conditions, load_settings, load_agent, ROOT
+        from robot_adaptation.collection.collect import rollout
+        from robot_adaptation.collection.schema import validate_episode
+        from robot_adaptation.collection.varied import WeightedCollectionEnv, conditions, load_settings, load_agent, ROOT
         torch.set_num_threads(1)
         original = json.loads((Path('/home/ubuntu/faliure/runs/failure_collection/varied_fixed40g')/'manifest.json').read_text())
         config = original['config']
@@ -38,8 +38,8 @@ class CollectionSimulationTests(unittest.TestCase):
                     env.close()
 
     def test_dense_controls_read_back_and_spawn_offsets_are_applied(self):
-        from failure_collection.varied import WeightedCollectionEnv, conditions, load_settings, load_agent, ROOT
-        from failure_collection.collect import rollout
+        from robot_adaptation.collection.varied import WeightedCollectionEnv, conditions, load_settings, load_agent, ROOT
+        from robot_adaptation.collection.collect import rollout
         from scipy.spatial.transform import Rotation
         import torch
         torch.set_num_threads(1)

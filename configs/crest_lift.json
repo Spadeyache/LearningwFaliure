@@ -1,0 +1,28 @@
+{
+  "factor_config": "failure_collection_varied.json",
+  "extra_factors": {
+    "object_color_r": {"type": "numeric", "min": 0.0, "nominal": 1.0, "max": 1.0, "enabled": true, "unit": "RGB"},
+    "object_color_g": {"type": "numeric", "min": 0.0, "nominal": 0.0, "max": 1.0, "enabled": true, "unit": "RGB"},
+    "object_color_b": {"type": "numeric", "min": 0.0, "nominal": 0.0, "max": 1.0, "enabled": true, "unit": "RGB"}
+  },
+  "parameters": {
+    "grasp_x_m": {"min": -0.12, "max": 0.12},
+    "grasp_y_m": {"min": -0.12, "max": 0.12},
+    "grasp_z_m": {"min": 0.008, "max": 0.055},
+    "lift_target_z_m": {"min": 0.10, "max": 0.40},
+    "lift_speed_m_s": {"min": 0.08, "max": 0.35},
+    "close_duration_s": {"min": 0.15, "max": 0.75},
+    "grip_limit_n": {"min": 0.5, "max": 40.0}
+  },
+  "experiment": {
+    "seed": 43,
+    "context_count": 4,
+    "start_seed": 2000,
+    "random_interventions": 1,
+    "nominal_first": true,
+    "max_sparse_evaluations": 128
+  },
+  "optimizer": {"iterations": 6, "population": 12, "epsilon": 0.5, "initial_std": 0.12, "min_std": 0.01},
+  "task": {"episode_steps": 160, "hold_steps": 5, "grip_limits": [0.25, 40.0]},
+  "max_rollouts": 3000
+}

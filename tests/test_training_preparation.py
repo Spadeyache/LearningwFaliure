@@ -3,10 +3,8 @@
 import ast
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
 from io import StringIO
-import importlib.util
 import json
 from pathlib import Path
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -14,14 +12,7 @@ from unittest.mock import patch
 import torch
 
 
-TRAINING_PATH = Path(__file__).resolve().parents[1] / "learning-withoutCLI"
-SPEC = importlib.util.spec_from_file_location("training_preparation_under_test", TRAINING_PATH / "train_ppo.py")
-TRAIN = importlib.util.module_from_spec(SPEC)
-sys.path.insert(0, str(TRAINING_PATH))
-try:
-    SPEC.loader.exec_module(TRAIN)
-finally:
-    sys.path.remove(str(TRAINING_PATH))
+from robot_adaptation.policy import train as TRAIN
 
 
 def read_json(path):

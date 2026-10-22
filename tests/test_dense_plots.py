@@ -1,15 +1,13 @@
 """Check isolation, legacy compatibility and readable combined sheets."""
 import json
 from pathlib import Path
-import sys
 import tempfile
 import unittest
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'data_check'))
-import plot
-from combine_plots import combine
+from robot_adaptation.analysis.plots import plot
+from robot_adaptation.analysis.plots.combine_plots import combine
 
 
 class DensePlanTests(unittest.TestCase):
@@ -20,7 +18,7 @@ class DensePlanTests(unittest.TestCase):
         cls.rows = [dict(condition=k) for k in cls.conditions]
 
     def test_every_collected_condition_has_an_isolated_plot(self):
-        _, requests = plot.read_requests(ROOT / 'data_check/plots_dense.md')
+        _, requests = plot.read_requests(ROOT / 'robot_adaptation/analysis/plots/plots_dense.md')
         self.assertEqual(len(requests), 307)
         covered = set()
         for request in requests:
@@ -37,7 +35,7 @@ class DensePlanTests(unittest.TestCase):
             plot.select(request, self.conditions, self.rows)
 
     def test_legacy_markdown_still_parses(self):
-        _, requests = plot.read_requests(ROOT / 'data_check/plots.md')
+        _, requests = plot.read_requests(ROOT / 'robot_adaptation/analysis/plots/plots.md')
         self.assertEqual(len(requests), 46)
         self.assertIn('com_only', [r['name'] for r in requests])
 

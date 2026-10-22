@@ -7,8 +7,8 @@ import unittest
 
 import numpy as np
 
-from failure_collection import SCHEMA_VERSION
-from failure_collection.schema import INPUT_LAYOUTS, load_inputs, save_episode, validate_episode
+from robot_adaptation.collection import SCHEMA_VERSION
+from robot_adaptation.collection.schema import INPUT_LAYOUTS, load_inputs, save_episode, validate_episode
 
 
 def episode_fixture():

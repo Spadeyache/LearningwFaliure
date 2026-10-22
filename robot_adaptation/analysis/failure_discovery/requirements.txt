@@ -1,0 +1,2 @@
+# Shared project environment; install dependencies from the root lock.
+-r ../../../requirements-lock.txt
