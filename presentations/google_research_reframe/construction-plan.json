@@ -1,0 +1,20 @@
+{
+  "action": "Edit existing slides 1\u20136 in place; preserve slide order and draft slides 7\u20138",
+  "designExemplar": "pi_simple_20261022_s01",
+  "design": "Preserve warm off-white, navy/teal, Arial hierarchy, simple text columns and arrows. No boxes, header or footer.",
+  "mediaMapping": {
+    "slide3 chart": "keep exact existing evidence",
+    "slide3 decorative frame": "hide fill and outline",
+    "slide4 initial/final photos": "keep",
+    "slide4 policy diagram": "keep"
+  },
+  "narrative": [
+    "Overall goal and physical-understanding focus",
+    "Enabling conditioned-policy capability",
+    "Completed initial-estimation result",
+    "Completed fixed-estimate simulation integration",
+    "Proposed refinement and longer-term missing factors",
+    "First controlled experiment"
+  ],
+  "sourceNotes": "Preserved; revised framing prepended"
+}

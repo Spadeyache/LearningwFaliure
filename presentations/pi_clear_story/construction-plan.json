@@ -1,0 +1,78 @@
+{
+  "mainSlides": [
+    {
+      "id": "pi_adaptability_vision_zero",
+      "role": "Vision through a concrete failure",
+      "exemplar": "pi_adaptability_vision_zero",
+      "construction": "edit existing native objects in place"
+    },
+    {
+      "id": "pi_simple_20261022_s01",
+      "role": "Scope of learned corrections",
+      "exemplar": "pi_simple_20261022_s01",
+      "construction": "edit existing native objects in place"
+    },
+    {
+      "id": "pi_simple_20261022_s02",
+      "role": "Current conditioned-policy setup",
+      "exemplar": "pi_simple_20261022_s02",
+      "construction": "edit existing native objects in place"
+    },
+    {
+      "id": "pi_simple_20261022_s03",
+      "role": "Completed visual mass result",
+      "exemplar": "pi_simple_20261022_s03",
+      "construction": "edit existing native objects in place"
+    },
+    {
+      "id": "pi_simple_20261022_s04",
+      "role": "Completed simulation integration",
+      "exemplar": "pi_simple_20261022_s04",
+      "construction": "edit existing native objects in place"
+    },
+    {
+      "id": "h437c0d080b9bf084_0_4",
+      "role": "Proposed failure-variable study",
+      "exemplar": "h437c0d080b9bf084_0_4",
+      "construction": "edit existing native objects in place"
+    },
+    {
+      "id": "pi_next_steps_20261022",
+      "role": "Proposed estimate-refinement pilot",
+      "exemplar": "pi_next_steps_20261022",
+      "construction": "edit existing native objects in place"
+    },
+    {
+      "id": "h437c0d080b9bf084_0_14",
+      "role": "Longer-term research agenda",
+      "exemplar": "h437c0d080b9bf084_0_14",
+      "construction": "edit existing native objects in place"
+    }
+  ],
+  "mediaMapping": {
+    "visual mass chart": "keep exact asset and metric values",
+    "initial RGB and final robot photo": "keep as actual integration evidence",
+    "new red cube/gripper schematics": "illustrative only, explicitly labeled"
+  },
+  "style": "Existing Arial, warm off-white, navy/teal; no container boxes; editable vector diagrams",
+  "notes": "Remove notes from eight main slides; add none",
+  "appendix": "Preserve unrelated draft text; mark skipped",
+  "originalSnapshot": "raw-before.json",
+  "additionalCompletedExperiment": {
+    "id": "pi_failure_discovery_result",
+    "role": "Motion-based unsupervised failure grouping and limitation",
+    "data": "230 saved attempts, 154 failures, two candidate behavior groups; causal and known/unknown failure labels unvalidated",
+    "figure": "failure_behavior_groups.png generated from recorded episode_metrics.csv"
+  },
+  "mainSlideCount": 9,
+  "visibleNextReading": {
+    "paper": "Annie Xie and Chelsea Finn: Lifelong Robotic Reinforcement Learning by Retaining Experiences",
+    "url": "https://arxiv.org/abs/2109.09180",
+    "secondDirection": "Explore LLM reasoning methods, including OpenAI work, as possible inspiration for robot failure diagnosis and update choices"
+  },
+  "finalChecks": {
+    "mainSlidesHaveNoSpeakerNotes": true,
+    "allNineMainSlidesVisuallyReviewed": true,
+    "unrelatedDraftRetainedSkipped": true
+  }
+}

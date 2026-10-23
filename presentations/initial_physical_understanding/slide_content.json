@@ -1,0 +1,30 @@
+[
+  {
+    "title": "When expected physics\nmeets the real world",
+    "notes": "Broad question: How can robots at deployment handle situations they were not exposed to during training? One motivation is the gap between expected physical conditions and the actual environment. The drawing is a conceptual illustration, not an experimental result. The same object can behave differently when its physical properties differ from what the system assumes."
+  },
+  {
+    "title": "Use an estimate of the actual conditions",
+    "notes": "The hypothesis is that a policy trained over a range of physical conditions can use an approximation of the current environment as an input. The policy is part of the experimental setup. The contribution studied here is formation of the initial physical estimate. Later work may revise that estimate through interaction. No perfect-performance guarantee is assumed."
+  },
+  {
+    "title": "What we mean by understanding",
+    "notes": "For this experiment, understanding the world means estimating task-relevant physical properties well enough to support execution. In the broader problem a robot may need an objective and a range of solutions. Here we supply the objective and a particular solution family. Movement adaptation and general decision-making are outside the current research focus. The trained controller is used to test whether the initial physical estimate is useful."
+  },
+  {
+    "title": "One task. One grasp strategy.",
+    "notes": "The task is to pick up an object and lift it. We choose a top-down approach, grasp, and vertical lift in advance. This is a deliberate restriction: the experiment studies the robot’s initial approximation of physical conditions while keeping the high-level task and grasp strategy fixed. The diagrams are schematic, not a proposed new movement-learning contribution."
+  },
+  {
+    "title": "Prepare the policy in simulation",
+    "notes": "Represent the environment using a selected set of variables. We propose using CREST to identify relevant context variables so that representation and computation remain manageable. The variable names shown are examples, not a reported selection result. Train the conditioned policy in simulation over variation in the modeled physical context. CREST relevance is conditional on the tested task, controller, ranges, and simulator; it does not guarantee complete coverage of real-world physics. Reference: Lee et al., Causal Reasoning in Simulation for Structure and Transfer Learning of Robot Manipulation Policies, ICRA 2021, https://arxiv.org/abs/2103.16772 ."
+  },
+  {
+    "title": "Form the initial estimate at deployment",
+    "notes": "At deployment, initial observations are used to estimate the selected physical properties. The diagram illustrates a possible observation pathway; the sensing method is part of the experimental design. The estimates are supplied to the policy trained in simulation. We study how this initial approximation is formed and whether it supports execution. The representation can be approximate, but its usefulness is an empirical question. Correct selected parameters do not guarantee perfect performance, because omitted effects, policy limitations, and physical constraints can remain. This slide is a proposed setup, not a reported result."
+  },
+  {
+    "title": "Initial understanding comes first",
+    "notes": "The first stage studies how a robot forms an initial approximation of the physical environment for a fixed manipulation task. A later stage can study how the robot revises that approximation using interaction, including observed responses associated with successes and failures. Outcome alone may not identify the cause; trajectories and sensor observations can provide richer evidence. Interaction-based refinement is future work and is not presented as part of the current contribution. The deck communicates a research idea and contains no newly claimed experimental results."
+  }
+]

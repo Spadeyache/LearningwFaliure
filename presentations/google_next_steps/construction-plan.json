@@ -1,0 +1,14 @@
+{
+  "slideId": "pi_next_steps_20261022",
+  "narrativeRole": "Combine existing slides 5 and 6 into one proposed next-step slide",
+  "exemplar": "pi_simple_20261022_s01",
+  "construction": "duplicate native two-column slide 1 and reuse its title, subtitle, column headings, body frames, marker circles, and closing statement; add a four-stage proposed update loop",
+  "mediaMapping": "no media on exemplar",
+  "sourceSlides": [
+    "h437c0d080b9bf084_0_14",
+    "h437c0d080b9bf084_0_4"
+  ],
+  "preserveOriginalSlides": true,
+  "targetIndex": 4,
+  "notes": "Keep the original research notes and arXiv reading link in speaker notes. Proposed updates are future work."
+}

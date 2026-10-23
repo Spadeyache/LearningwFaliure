@@ -1,0 +1,15 @@
+{
+  "presentationId": "16VhkS1h6x0nkUWCLV8m7d1XogZL08FBqD9fSinsV5p0",
+  "slideId": "pi_simple_20261022_s04",
+  "sourceExemplar": "Current pipeline slide; reuse title, subtitle, three card frames, metric labels, and representative final frame.",
+  "imageMapping": {
+    "4 cm final": "delete duplicate result photo",
+    "5 cm final": "reuse as execution result",
+    "6 cm final": "delete duplicate result photo",
+    "5 cm raw initial RGB": "add as actual estimator input"
+  },
+  "imagePath": "/home/ubuntu/faliure/runs/deployment/20261022_014201_067220/episode_001/initial.png",
+  "changedSlideOnly": 4,
+  "otherSlides": "preserve all user edits",
+  "flow": "initial RGB -> mass estimator -> trained RL policy -> simulation; simulator state and forces feed back to policy; no estimator update"
+}

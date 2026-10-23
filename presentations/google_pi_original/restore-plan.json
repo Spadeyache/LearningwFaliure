@@ -1,0 +1,20 @@
+{
+  "presentationId": "16VhkS1h6x0nkUWCLV8m7d1XogZL08FBqD9fSinsV5p0",
+  "revisionId": "cbUri8KghKWfAQ",
+  "targetSlideIds": [
+    "pi_simple_20261022_s01",
+    "pi_simple_20261022_s02",
+    "pi_simple_20261022_s03",
+    "pi_simple_20261022_s04",
+    "pi_simple_20261022_s05",
+    "pi_simple_20261022_s06",
+    "pi_simple_20261022_s07",
+    "pi_simple_20261022_s08"
+  ],
+  "source": "presentations/pi_adaptation_update/robot_adaptation_pi.pptx and vector previews",
+  "firstSlideEditsPreserved": {
+    "title": "Objective: robot at deployment executing a task in an unseen situation at training",
+    "body": "The robot covers the range and precise"
+  },
+  "originalReferenceSlides": "Absent in latest user-edited deck; do not recreate."
+}

@@ -10,7 +10,7 @@ robot_adaptation/
   collection/                  physical sweeps, recorder, schemas, source provenance
   analysis/failure_discovery/   grouping and intervention-response reports
   analysis/plots/               plot plans and report generation
-  runtime/                     future estimator-to-policy composition
+  runtime/                     initial image to estimator to policy rollout
 experiments/crest/              CREST-specific search, repair and experiment driver
 configs/                       experiment settings
 runs/                          generated outputs and source snapshots
@@ -38,8 +38,8 @@ in `collection/`.
   are supervised labels, not prediction inputs. The initial visual baseline
   needs size correlated with mass and does not establish arbitrary-density inference.
 - Estimator outputs are kilograms. The current policy's supplied-weight input
-  is in newtons. Runtime integration must use the simulator's gravity for that
-  conversion and preserve the observation ordering and architecture version.
+  is in newtons. The runtime uses simulator gravity for that conversion, preserves the observation
+  ordering and architecture version, and checks the supplied weight each step.
 - Episode schemas and input/label separation are owned by `collection/`.
   Simulator-only labels do not automatically become deployment observations.
 

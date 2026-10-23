@@ -1,0 +1,11 @@
+{
+  "newSlideId": "pi_adaptability_vision_zero",
+  "narrativeRole": "Slide zero: overall vision of adaptability within a single task",
+  "exemplarSlideId": "pi_simple_20261022_s01",
+  "construction": "Duplicate the native two-column opening slide, reuse title/subtitle/two headings/two bodies/two circle markers and closing statement, add an editable interaction/learning feedback diagram",
+  "mediaMapping": "No media on exemplar",
+  "speakerNotes": "Do not add notes; verify new notes are empty",
+  "style": "Existing warm off-white, navy and teal, Arial. No boxes, header or footer.",
+  "targetPosition": 0,
+  "preserveOtherSlides": true
+}

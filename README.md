@@ -13,7 +13,7 @@ experiments share one codebase and one Python environment.
 | Collection | [robot_adaptation/collection/](robot_adaptation/collection/README.md) | Physical sweeps, recording, episode schemas and provenance. |
 | Failure discovery | [robot_adaptation/analysis/failure_discovery/](robot_adaptation/analysis/failure_discovery/README.md) | Motion grouping and responses to matched physical interventions. |
 | Plots | [robot_adaptation/analysis/plots/](robot_adaptation/analysis/plots/README.md) | Editable plot plans, individual plots and combined reports. |
-| Runtime | [robot_adaptation/runtime/](robot_adaptation/runtime/README.md) | Place for estimator-to-policy integration; a combined runner is still future work. |
+| Runtime | [robot_adaptation/runtime/](robot_adaptation/runtime/README.md) | Initial RGB to estimated mass to policy actions in simulation. |
 | CREST | [experiments/crest/](experiments/crest/README.md) | Research experiment using the shared simulator and collection design. |
 
 Edit the active locations above. Old top-level code folders contain compatibility
@@ -36,6 +36,7 @@ source scripts/activate_grip.sh
 | Train policy | `python -m robot_adaptation.policy.train` |
 | Inspect saved policy | `python -m robot_adaptation.policy.inspect` |
 | Generate images and train mass estimator | `python -m robot_adaptation.estimators.visual_mass` |
+| Deploy estimator with policy in simulation | `python -m robot_adaptation.runtime --record-video` |
 | Preview dense collection | `bash scripts/collect_varied.sh --plan-only` |
 | Collect dense physical sweeps | `bash scripts/collect_varied.sh` |
 | Preview official-policy collection | `bash scripts/collect_stock_short.sh --plan-only` |
@@ -64,7 +65,7 @@ New outputs go under `runs/`; an explicit output path can select a fresh locatio
   using 384 RGB images, with **2.76 g test MAE** across 12 held-out sizes
   (48 images), versus 106.37 g for a constant training-mean prediction. Cubes have
   constant density and fixed friction, so size predicts mass by construction.
-  Policy improvement has not yet been evaluated.
+  A combined simulation runner is available; policy improvement has not yet been evaluated.
 - **Official-policy baseline:** ten CPU attempts achieved 7/10 successes; its
   quality gate stopped the planned sweep. See the [collection guide](robot_adaptation/collection/STOCK_SHORT.md).
 
