@@ -1,0 +1,11 @@
+{
+  "role": "Opening overview of the user's research vision",
+  "exemplar": "pi_next_reading_manual_20261023",
+  "construction": "Duplicate the minimal text-only next-steps exemplar; reuse text slots, remove links, add a simple native arrow loop",
+  "placement": "Before the existing first slide; preserve every existing slide",
+  "problem": "Sim-to-real transfer and continual adaptation during deployment",
+  "approach": "Continuously forming and revising physical understanding through interaction",
+  "diagram": "Act → Observe → Revise understanding → Adapt → Act",
+  "style": "Plain white, Arial, navy and teal, no boxes, notes, headers or footers",
+  "media": "No image/video assets in this exemplar"
+}

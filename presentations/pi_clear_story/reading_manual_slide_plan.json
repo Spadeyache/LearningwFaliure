@@ -1,0 +1,14 @@
+{
+  "role": "Minimal draft of next steps: read three linked papers and manually review failure replays",
+  "source_slide": "h437c0d080b9bf084_0_14",
+  "new_slide": "pi_next_reading_manual_20261023",
+  "method": "Duplicate the existing next-steps exemplar; reuse text slots; remove flow arrows and redundant content",
+  "media": "No images or videos in this exemplar",
+  "placement": "Immediately after the current slide five; preserve existing slides and their content",
+  "style": "White background; Arial; existing navy and teal; no boxes, notes or footers",
+  "papers": [
+    "https://arxiv.org/abs/2109.09180",
+    "https://arxiv.org/abs/2306.15724",
+    "https://arxiv.org/abs/2410.00371"
+  ]
+}

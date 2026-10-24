@@ -1,0 +1,12 @@
+{
+  "purpose": "Time-aligned overlay of two recorded-pose examples; no new policy or physics rollout",
+  "group_1_episode": "646e57b71bccfe86_seed2009",
+  "group_2_episode": "d282e9db20b191be_seed2009",
+  "sources": [
+    "failure_discovery/results/mass_friction_discovery/examples/group_1_01.gif",
+    "failure_discovery/results/mass_friction_discovery/examples/group_2_01.gif"
+  ],
+  "alignment": "Same recorded time from reset; 51 frames, 100 ms per frame",
+  "presentation": "Equal-opacity overlay; group 1 tinted teal, group 2 tinted orange. Original metadata strip removed; camera scene preserved below the strip.",
+  "limitation": "One representative example per behavior group; not evidence for two distinct causal failure types"
+}
